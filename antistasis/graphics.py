@@ -18,7 +18,7 @@ def output(string):
 
 # Rotate pygame image about center
 # https://stackoverflow.com/questions/4183208/how-do-i-rotate-an-image-around-its-center-using-pygame
-def Rotate_Center(surf, image, pos, angle):
+def rotate_center(surf, image, pos, angle):
 
     # offset from pivot to center
     w, h = image.get_size()

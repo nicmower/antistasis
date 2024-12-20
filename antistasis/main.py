@@ -17,6 +17,9 @@ import pyglet #2.0.20
 from graphics import *
 from ui import *
 from simulation import *
+from __version__ import __title__ as gameTitle
+from __version__ import __version__ as gameVersion
+
 
 #############
 # CONSTANTS #
@@ -30,9 +33,9 @@ MAX_SUN_AZIMUTH = 360
 # Operation
 SIM_SPEED_FACTORS = [60.0, 30.0, 15.0, 5.0, 1.0]
 
-#############
-# FUNCTIONS #
-#############
+#####################
+# CLASSES/FUNCTIONS #
+#####################
 
 def output(string):
     """Writes a string to stdout."""
@@ -44,6 +47,10 @@ def toggle_control(currentValue, control):
     output(f"{control} is now {'enabled' if newValue else 'disabled'}.")
     return newValue
 
+class Sim_Speed:
+    speedFactors = [60.0, 30.0, 15.0, 5.0, 1.0]
+
+
 #############
 # MAIN LOOP #
 #############
@@ -54,7 +61,7 @@ def run():
     pygame.init()
 
     # Print game info
-    introString = gameTitle.upper() + " " + gameVersion
+    introString = gameTitle + " " + str(gameVersion)
     separatorString = "=" * len(introString)
 
     output(separatorString)
@@ -103,9 +110,9 @@ def run():
             timer.increment_tick()
             if timer.tick == simTicks:
                 hours += 1
-                map.sunAzimuth += 15
-                if map.sunAzimuth >= 360:
-                    map.sunAzimuth -= 360
+                map.sunAzimuth += SUN_AZIMUTH_INCREMENT
+                if map.sunAzimuth >= MAX_SUN_AZIMUTH:
+                    map.sunAzimuth -= MAX_SUN_AZIMUTH
                 map.reset_suntiles()
                 map.heat_calcs()
                 map.gas_calcs()
@@ -138,12 +145,12 @@ def run():
                         
                 # Raise sea level
                 if event.key == K_w:
-                    map.seaLevel += 100
+                    map.seaLevel += SEA_LEVEL_INCREMENT
                     map.reset_tiles()
 
                 # Lower sea level
                 if event.key == K_e:
-                    map.seaLevel -= 100
+                    map.seaLevel -= SEA_LEVEL_INCREMENT
                     map.reset_tiles()
 
                 # Toggle FPS cap
