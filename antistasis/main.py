@@ -2,7 +2,7 @@
 
 # PROGRAM DATA
 gameTitle = "Antistasis"
-gameVersion = "0.1.3"
+gameVersion = "0.0.1"
 
 # INFO:
 # Tiles are represented as 1 mile x 1 mile
