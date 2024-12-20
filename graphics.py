@@ -44,7 +44,7 @@ class GameWindow:
     # Initialize window
     def __init__(self, defaultRes, graphics, resX=1920, resY=1080):
     
-        # Screen info
+        # Get current screen info
         displayInfo = pygame.display.Info()
         self.screenSize = (displayInfo.current_w, displayInfo.current_h)
         flags = DOUBLEBUF
@@ -60,15 +60,17 @@ class GameWindow:
         
         # Generate screen
         self.screen = pygame.display.set_mode([self.x, self.y], flags)
-        self.screen.set_icon(graphics.data['icon'])
         
         # Print information to stdout
         Write_Stdout("Screen Resolution: " + str(self.screenSize[0]) + " x " + str(self.screenSize[1]) + " px")
         Write_Stdout("Window Resolution: " + str(self.x) + " x " + str(self.y) + " px")
         Write_Stdout("Window Total Area: " + str(self.area) + " px")
 
-    def set_caption(self, str):
-        pygame.display.set_caption(str)
+    def set_caption(self, string):
+        pygame.display.set_caption(string)
+        
+    def set_icon(self, icon):
+        pygame.display.set_icon(icon)
 
 # Loads all graphics
 class Graphics:

@@ -56,6 +56,7 @@ graphics = Graphics()
 mainGameWindow = GameWindow(True, graphics)
 screen = mainGameWindow.screen
 mainGameWindow.set_caption(introString)
+mainGameWindow.set_icon(graphics.data['icon'])
 
 # Initialize mouse object
 mouse = Mouse_Data()
