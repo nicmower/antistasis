@@ -9,7 +9,7 @@ textColor = (255, 255, 255)
 
 
 # Write to stdout (alternative to print)
-def Write_Stdout(text):
+def write_stdout(text):
     sys.stdout.write(str(text))
     sys.stdout.write("\n")
 
@@ -62,9 +62,9 @@ class GameWindow:
         self.screen = pygame.display.set_mode([self.x, self.y], flags)
         
         # Print information to stdout
-        Write_Stdout("Screen Resolution: " + str(self.screenSize[0]) + " x " + str(self.screenSize[1]) + " px")
-        Write_Stdout("Window Resolution: " + str(self.x) + " x " + str(self.y) + " px")
-        Write_Stdout("Window Total Area: " + str(self.area) + " px")
+        write_stdout("Screen Resolution: " + str(self.screenSize[0]) + " x " + str(self.screenSize[1]) + " px")
+        write_stdout("Window Resolution: " + str(self.x) + " x " + str(self.y) + " px")
+        write_stdout("Window Total Area: " + str(self.area) + " px")
 
     def set_caption(self, string):
         pygame.display.set_caption(string)

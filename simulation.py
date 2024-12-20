@@ -164,8 +164,8 @@ class GameMap:
         self.reset_suntiles()
         
         # Print information to stdout
-        Write_Stdout("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.size.x) + " x " + str(self.size.y) + " px)")
-        Write_Stdout("Map Area: " + str(self.areaTiles) + " tiles (" + str(self.areaPixels) + " px)")
+        write_stdout("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.size.x) + " x " + str(self.size.y) + " px)")
+        write_stdout("Map Area: " + str(self.areaTiles) + " tiles (" + str(self.areaPixels) + " px)")
 
 
     # Subclass for Map to store tile data
@@ -274,7 +274,7 @@ class GameMap:
         airTemperatureNoiseMax = 10
         
         # Parabolic temperature equation - input is "latitude", a value between -1 and 1
-        def temperatureCurve(latitude):
+        def temperature_curve(latitude):
             return maxTemperature + (-maxTemperature + minTemperature) * latitude**2
 
         # Set to baseline (water at average ocean depth)
@@ -339,8 +339,8 @@ class GameMap:
             for j in range(self.tileCount):
                 tile = self.mapData.tiles[i][j]
                 latitudeValuePercent = (float(j) - self.tileCount/2.0) / (self.tileCount/2)
-                temperature = temperatureCurve(latitudeValuePercent)
-                airTemperature = temperatureCurve(latitudeValuePercent)
+                temperature = temperature_curve(latitudeValuePercent)
+                airTemperature = temperature_curve(latitudeValuePercent)
                 
                 # Add random noise to temperature
                 if random.randint(0, temperatureNoiseFreq-1) == 0:

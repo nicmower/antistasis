@@ -16,10 +16,13 @@ import os
 import sys
 import time
 import math
-import numpy as np
 import random
-import pygame
+import subprocess
+import numpy as np #2.1.1
+import pandas as pd #2.2.2
+import pygame #2.6.1
 from pygame.locals import *
+import pyglet #2.0.20
 
 from graphics import *
 from ui import *
@@ -30,9 +33,14 @@ from simulation import *
 # FUNCTIONS & CLASSES
 
 # Write to stdout (alternative to print)
-def Write_Stdout(text):
+def write_stdout(text):
     sys.stdout.write(str(text))
     sys.stdout.write("\n")
+    
+    
+def install_and_import(package):
+    try:
+        __import__(package)
 
 # --------------------------------------------------------------
 
@@ -45,9 +53,9 @@ pygame.init()
 introString = gameTitle.upper() + " " + gameVersion
 separatorString = "=" * len(introString)
 
-Write_Stdout(separatorString)
-Write_Stdout(introString)
-Write_Stdout(separatorString)
+write_stdout(separatorString)
+write_stdout(introString)
+write_stdout(separatorString)
 
 # Load all graphics in Resources folder
 graphics = Graphics()
