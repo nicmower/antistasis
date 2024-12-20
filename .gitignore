@@ -1,0 +1,25 @@
+# Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment directories
+env/
+venv/
+*.env/
+
+# Dependency directories
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Windows-specific files
+Thumbs.db
+
+# Logs
+*.log
+
+# Distribution files
+build/
+dist/
+*.egg-info/
+*.egg
