@@ -50,7 +50,7 @@ def run():
     write_stdout(introString)
     write_stdout(separatorString)
 
-    # Load all graphics in Resources folder
+    # Load all graphics in resources folder
     graphics = Graphics()
 
     # Set up the drawing window, get reference to screen, set window title/caption
@@ -67,8 +67,8 @@ def run():
 
     # Font for on-screen text
     font = pygame.font.SysFont('simsunextb.ttf', 32)
-    contourFont = pygame.font.Font('Fonts/unispace.ttf', 14)
-    pokeFont = pygame.font.Font('Fonts/PokemonGb-RAeo.ttf', 14)
+    contourFont = pygame.font.Font('resources/fonts/unispace.ttf', 14)
+    pokeFont = pygame.font.Font('resources/fonts/PokemonGb-RAeo.ttf', 14)
     textBackdropColor = None
 
     #~~~~~~~~~~~

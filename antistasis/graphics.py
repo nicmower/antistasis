@@ -75,10 +75,10 @@ class GameWindow:
 # Loads all graphics
 class Graphics:
     
-    # Pulls all image (.png) files from Resources folder and loads as pygame image
+    # Pulls all image (.png) files from resources folder and loads as pygame image
     # Stores each in dictionary under filename (no extension) indices
     def __init__(self):
-        self.directory = "Resources"
+        self.directory = "resources/graphics"
         self.data = {}
         for file in os.listdir(self.directory):
             f = os.path.join(self.directory, file)
