@@ -7,19 +7,3 @@ __pycache__/
 env/
 venv/
 *.env/
-
-# Dependency directories
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Windows-specific files
-Thumbs.db
-
-# Logs
-*.log
-
-# Distribution files
-build/
-dist/
-*.egg-info/
-*.egg
