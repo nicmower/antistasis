@@ -1,41 +1,52 @@
-# --------------------------------------------------------------
-
-# PROGRAM DATA
-gameTitle = "Antistasis"
-gameVersion = "0.0.1"
-
-# --------------------------------------------------------------
-
-# PACKAGE IMPORT
-
+# Standard libraries
 import os
 import sys
 import time
 import math
 import random
 import subprocess
+
+# Third-party libraries
 import numpy as np #2.1.1
 import pandas as pd #2.2.2
 import pygame #2.6.1
 from pygame.locals import *
 import pyglet #2.0.20
 
+# Local imports
 from graphics import *
 from ui import *
 from simulation import *
 
-# --------------------------------------------------------------
+#############
+# CONSTANTS #
+#############
 
-# FUNCTIONS & CLASSES
+# Simulation
+SEA_LEVEL_INCREMENT = 100
+SUN_AZIMUTH_INCREMENT = 15
+MAX_SUN_AZIMUTH = 360
 
-# Write to stdout (alternative to print)
-def write_stdout(text):
-    sys.stdout.write(str(text))
-    sys.stdout.write("\n")
+# Operation
+SIM_SPEED_FACTORS = [60.0, 30.0, 15.0, 5.0, 1.0]
 
-# --------------------------------------------------------------
+#############
+# FUNCTIONS #
+#############
 
-# INITIALIZATION
+def output(string):
+    """Writes a string to stdout."""
+    sys.stdout.write(f"{string}\n")
+    
+def toggle_control(currentValue, control):
+    """Toggles a boolean control feature."""
+    newValue = not currentValue
+    output(f"{control} is now {'enabled' if newValue else 'disabled'}.")
+    return newValue
+
+#############
+# MAIN LOOP #
+#############
 
 def run():
 
@@ -46,9 +57,9 @@ def run():
     introString = gameTitle.upper() + " " + gameVersion
     separatorString = "=" * len(introString)
 
-    write_stdout(separatorString)
-    write_stdout(introString)
-    write_stdout(separatorString)
+    output(separatorString)
+    output(introString)
+    output(separatorString)
 
     # Load all graphics in resources folder
     graphics = Graphics()

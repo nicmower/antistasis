@@ -164,8 +164,8 @@ class GameMap:
         self.reset_suntiles()
         
         # Print information to stdout
-        write_stdout("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.size.x) + " x " + str(self.size.y) + " px)")
-        write_stdout("Map Area: " + str(self.areaTiles) + " tiles (" + str(self.areaPixels) + " px)")
+        output("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.size.x) + " x " + str(self.size.y) + " px)")
+        output("Map Area: " + str(self.areaTiles) + " tiles (" + str(self.areaPixels) + " px)")
 
 
     # Subclass for Map to store tile data
@@ -774,13 +774,13 @@ class GameMap:
                 self.mapSurface.blit(tileGraphic, currentPosition)
                 if self.windArrows:
                     arrowImage = self.graphics.data["arrow"]
-                    Rotate_Center(self.mapSurface, arrowImage, currentPosition, tile.windSpeedAngle)
+                    rotate_center(self.mapSurface, arrowImage, currentPosition, tile.windSpeedAngle)
                 if tile.graphicOverlay != []:
                     for overlay in tile.graphicOverlay:
                         graphicOverlayType = overlay[0]
                         graphicOverlay = self.graphics.data[graphicOverlayType]
                         tileOverlayAngle = overlay[1]
-                        Rotate_Center(self.mapSurface, graphicOverlay, currentPosition, tileOverlayAngle)
+                        rotate_center(self.mapSurface, graphicOverlay, currentPosition, tileOverlayAngle)
 
 
     # Generate sun map

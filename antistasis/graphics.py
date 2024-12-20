@@ -7,11 +7,13 @@ from pygame.locals import *
 backdropColor = (24, 24, 24)
 textColor = (255, 255, 255)
 
+#############
+# FUNCTIONS #
+#############
 
-# Write to stdout (alternative to print)
-def write_stdout(text):
-    sys.stdout.write(str(text))
-    sys.stdout.write("\n")
+def output(string):
+    """Writes a string to stdout."""
+    sys.stdout.write(f"{string}\n")
 
 
 # Rotate pygame image about center
@@ -62,9 +64,9 @@ class GameWindow:
         self.screen = pygame.display.set_mode([self.x, self.y], flags)
         
         # Print information to stdout
-        write_stdout("Screen Resolution: " + str(self.screenSize[0]) + " x " + str(self.screenSize[1]) + " px")
-        write_stdout("Window Resolution: " + str(self.x) + " x " + str(self.y) + " px")
-        write_stdout("Window Total Area: " + str(self.area) + " px")
+        output("Screen Resolution: " + str(self.screenSize[0]) + " x " + str(self.screenSize[1]) + " px")
+        output("Window Resolution: " + str(self.x) + " x " + str(self.y) + " px")
+        output("Window Total Area: " + str(self.area) + " px")
 
     def set_caption(self, string):
         pygame.display.set_caption(string)
