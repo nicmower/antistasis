@@ -11,7 +11,7 @@ The ultimate goal will be gameplay where the player can take the role of either 
 Using Python/Pygame, the current game is a map generator and a barely-functioning, inefficient simulation of heat transfer.
 The near-term goal is to move to Pyglet and improve code efficiency and readability. 
 The mid-term goal is to have *at least* the climate simulation layer functioning as well as it can, identifying the capabilities of the simulation (i.e. world size).
-The long-term goal is to move to another language entirely, refactoring the code to work in a better environment like Unity or Godot.
+The long-term goal is to move to another language entirely, refactoring the code to work in a better environment like Unity or Godot, or using C#/C++ for the core simulation and retaining Python on the top level.
 
 ## DESCRIPTION
 The current game process simplified...
