@@ -25,4 +25,4 @@ The current game process simplified...
 6. Dependent on the physical properties, time of day, etc., once the game is unpaused, the game starts to "tick" - one hour per tick.
    Each tick runs a calculation on each tile, calculating radiation from the sun based on latitude/albedo, convection from air to land, and (not yet implemented) air-to-air.
    This means cold, icy land doesn't heat as quick due to reflection of sun radiation and or at the poles due to angle of incidence.
-   Land heated to above freezing becomes more absorptive and heats up quicker.
+   Land heated to above freezing becomes more absorptive and heats up quicker. Oceans take much longer to change temperature due to heat capacity.
