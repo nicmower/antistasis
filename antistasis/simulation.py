@@ -89,7 +89,7 @@ class Value_Lists:
 class GameMap:
 
     # Initialize game map
-    def __init__(self, gameWindow, graphics, mouse, mapSize, antialiasing=True):
+    def __init__(self, gameWindow, graphics, mapSize, antialiasing=True):
         
         # Initialize display values (not changing)
         self.tileRes = 64
@@ -97,7 +97,6 @@ class GameMap:
         self.areaTiles = self.tileCount ** 2
         self.gameWindow = gameWindow
         self.graphics = graphics
-        self.mouse = mouse
         self.antialiasing = antialiasing
         
         # Map display controls (changeable)
@@ -164,8 +163,8 @@ class GameMap:
         self.reset_suntiles()
         
         # Print information to stdout
-        output("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.size.x) + " x " + str(self.size.y) + " px)")
-        output("Map Area: " + str(self.areaTiles) + " tiles (" + str(self.areaPixels) + " px)")
+        log("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.size.x) + " x " + str(self.size.y) + " px)")
+        log("Map Area: " + str(self.areaTiles) + " tiles (" + str(self.areaPixels) + " px)")
 
 
     # Subclass for Map to store tile data
@@ -192,19 +191,12 @@ class GameMap:
         self.scale_map()
         if self.displaySun:
             self.scale_sun_map()
-            
-            
-    # Get initial difference between mouse and origin for click and drag operation
-    def click_and_drag_init(self):
-        self.mouse.update()
-        self.mouseDiff = (self.origin.x - self.mouse.pos[0], self.origin.y - self.mouse.pos[1])
 
 
     # Apply changed mouse position (click and drag) to map
-    def click_and_drag_update(self):
-        self.mouse.update()
-        self.origin.x = self.mouse.pos[0] + self.mouseDiff[0]
-        self.origin.y = self.mouse.pos[1] + self.mouseDiff[1]
+    def drag(self, relativePosition):
+        self.origin.x += relativePosition[0]
+        self.origin.y += relativePosition[1]
         self.check_bounds()
         
         
@@ -940,7 +932,7 @@ class GameMap:
                     else:
                         tile.graphic = "blank"                                     
                         
-        elif self.displayMode == "Elevation Ground-Only":
+        elif self.displayMode == "Elevation, Land-Only":
             self.contourEnabled = True
             tileElevationMax = 15000
             tileElevationMin = self.seaLevel
