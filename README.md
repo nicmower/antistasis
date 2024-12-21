@@ -23,6 +23,6 @@ The current game process simplified...
 5. Initial elevation, temperature, and whether land is ocean, stone (warm land above sea-level), or ice (ocean or land below freezing) has bearing on simulation.
    Each tile type has different heat capacity, albedo, etc.
 6. Dependent on the physical properties, time of day, etc., once the game is unpaused, the game starts to "tick" - one hour per tick.
-   Each tick runs a calculation on each tile, calculating radiation from the sun based on latitude/albedo, convection from air to land, and (eventually) air-to-air.
-   This means cold, icy land doesn't heat as quick due to reflection of sun radiation and angle of incidence.
+   Each tick runs a calculation on each tile, calculating radiation from the sun based on latitude/albedo, convection from air to land, and (not yet implemented) air-to-air.
+   This means cold, icy land doesn't heat as quick due to reflection of sun radiation and or at the poles due to angle of incidence.
    Land heated to above freezing becomes more absorptive and heats up quicker.
