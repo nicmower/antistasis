@@ -1,22 +1,22 @@
-## ANTISTASIS
+# ANTISTASIS
 This is an amateur game that likely will not be finished any time in the near future.
 The code uploaded on 12/19/2024 was almost entirely developed in 2022, besides maybe a few small changes.
 
-# OBJECTIVE
+## OBJECTIVE
 This game aims to be closer to a simulation than a traditional game, exploring the intersection of climate, nature, and human civilization.
 The ultimate goal will be gameplay where the player can take the role of either nature or humanity, and either destroy the other or learn to coexist.
 Easy mode would be to play as human civilization with no regard for nature, the climate, or human well-being with maximizing wealth as the goal.
 Medium mode would be to do that, but assure health, happiness, and freedom for all humanity.
 Hard mode would be to achieve all these things but while maintaining nature and the climate.
 
-# CURRENT STATE
+## CURRENT STATE
 12/19/2024:
 Using Python/Pygame, the current game is a map generator and a barely-functioning, inefficient simulation of heat transfer.
 The near-term goal is to move to Pyglet and improve code efficiency and readability. 
 The mid-term goal is to have *at least* the climate simulation layer functioning as well as it can, identifying the capabilities of the simulation (i.e. world size).
 The long-term goal is to move to another language entirely, refactoring the code to work in a better environment like Unity or Godot.
 
-# DESCRIPTION
+## DESCRIPTION
 The current game process simplified...
 1. Generate a world of size X-by-Y, where each discrete coordinate is a "tile", or a 1 mile x 1 mile square.
    The top and bottom of the world represent the poles of a spherical planet. Each tile also has "air", another layer that has implications on the simulation.
