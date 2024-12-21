@@ -1,4 +1,4 @@
-# ANTISTASIS
+## ANTISTASIS
 This is an amateur game that likely will not be finished any time in the near future.
 The code uploaded on 12/19/2024 was almost entirely developed in 2022, besides maybe a few small changes.
 
