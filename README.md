@@ -16,7 +16,7 @@ The long-term goal is to move to another language entirely, refactoring the code
 ## DESCRIPTION
 The current game process simplified...
 1. Generate a world of size X-by-Y, where each discrete coordinate is a "tile", or a 1 mile x 1 mile square.
-   The top and bottom of the world represent the poles of a spherical planet. Each tile also has "air", another layer that has implications on the simulation.
+   The top and bottom of the world represent the poles of a spherical planet. Each tile also has "air", another layer that has impact on the simulation.
 3. Generate topography, using randomness and math to set the "elevation" of each tile, apparent in the main game view.
    Elevation values below a certain threshold (default 0) are considered ocean, also apparent in the main game view.
 4. Generate initial temperature profile, with colder values at the poles and warmer at the equator (center of map).
