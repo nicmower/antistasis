@@ -5,9 +5,6 @@ The code uploaded on 12/19/2024 was almost entirely developed in 2022, besides m
 ## OBJECTIVE
 This game aims to be closer to a simulation than a traditional game, exploring the intersection of climate, nature, and human civilization.
 The ultimate goal will be gameplay where the player can take the role of either nature or humanity, and either destroy the other or learn to coexist.
-Easy mode would be to play as human civilization with no regard for nature, the climate, or human well-being with maximizing wealth as the goal.
-Medium mode would be to do that, but assure health, happiness, and freedom for all humanity.
-Hard mode would be to achieve all these things but while maintaining nature and the climate.
 
 ## CURRENT STATE
 12/19/2024:
