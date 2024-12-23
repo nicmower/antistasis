@@ -30,7 +30,7 @@ SUN_AZIMUTH_INCREMENT = 15  # degrees
 MAX_SUN_AZIMUTH = 360       # degrees
 
 SIM_TICK_DURATION = 1000    # ms
-SIM_SPEED_LEVELS = [0, 1, 2, 5, 10]
+SIM_SPEED_LEVELS = [0, 1, 2, 5, 10, 25]
 
 # Pygame settings
 EVENTS_USED = [pygame.KEYDOWN,          pygame.QUIT,        pygame.MOUSEBUTTONDOWN, \
@@ -78,11 +78,22 @@ class Game:
         K_8: ('Wind Speed', 'mph'),        
         }
     
-    def toggle_control(self, currentValue, control):
-        """Toggles a boolean control feature."""
-        newValue = not currentValue
-        log(f"{control} is now {'enabled' if newValue else 'disabled'}.")
-        return newValue
+    def toggle_control(control):
+        """Toggles a boolean control feature.
+           E.g. can be used to switch map.displaySun to False."""
+        control = not control
+        log(f"{str(control)} is now {'enabled' if control else 'disabled'}.")
+        self.map.reset_tiles()
+
+    def raise_sea_level(self):
+        """Passes user request to raise sea level to simulation core."""
+        self.map.seaLevel += SEA_LEVEL_INCREMENT
+        self.map.reset_tiles()
+        
+    def lower_sea_level(self):
+        """Passes user request to raise sea level to simulation core."""
+        self.map.seaLevel -= SEA_LEVEL_INCREMENT
+        self.map.reset_tiles()
 
     def handle_keydown(self, event):
         """Handles a Pygame keydown event.
@@ -93,8 +104,9 @@ class Game:
             self.running = False
             
         # Reset view / center map
-        elif event.key == K_z:    
+        elif event.key == K_z:
             self.map.reset_view()
+            self.map.reset_tiles()
         
         # Switch display mode
         elif event.key in self.keyDisplayModes.keys():
@@ -105,51 +117,31 @@ class Game:
             
         # Toggle stats (FPS, coords, etc)
         if event.key == K_q:
-            if self.readout:
-                self.readout = False
-            else:
-                self.readout = True
+            self.toggle_control(self.readout)
                 
         # Raise sea level
         if event.key == K_w:
-            self.map.seaLevel += SEA_LEVEL_INCREMENT
-            self.map.reset_tiles()
+            self.raise_sea_level()
 
         # Lower sea level
         if event.key == K_e:
-            self.map.seaLevel -= SEA_LEVEL_INCREMENT
-            self.map.reset_tiles()
-
-        # Toggle FPS cap
-        if event.key == K_x:
-            if limit_fps:
-                limit_fps = False
-            else:
-                limit_fps = True
+            self.lower_sea_level()
 
         # Toggle wind arrows
         if event.key == K_v:
-            if self.map.windArrows:
-                self.map.windArrows = False
-            else:
-                self.map.windArrows = True
-            self.map.reset_tiles()
+            self.toggle_control(self.map.windArrows)
             
         # Toggle sunlight
         if event.key == K_s:
-            if self.map.displaySun:
-                self.map.displaySun = False
-            else:
-                self.map.displaySun = True
-            self.map.reset_tiles()
+            self.toggle_control(self.map.displaySun)
             
         # Decrease greenhouse effect
         if event.key == K_LEFTBRACKET:
-            self.map.greenhouse -= 0.05
+            self.map.decrease_greenhouse_effect()
             
         # Increase greenhouse effect
         if event.key == K_RIGHTBRACKET:
-            self.map.greenhouse += 0.05
+            self.map.increase_greenhouse_effect()
             
         # Adjust sim speed/pause
         if event.key == K_COMMA:
@@ -256,7 +248,7 @@ class Game:
             self.map.sunAzimuth -= MAX_SUN_AZIMUTH
         self.map.reset_suntiles()
         self.map.heat_calcs()
-        self.map.gas_calcs()
+        #self.map.gas_calcs()
         #map.calc_velocity()
         self.map.reset_tiles()
         
@@ -307,6 +299,12 @@ class Game:
 
             # Toggle display of run/simulation stats
             if self.readout:
+
+                # Backdrop to enhance readout text clarity
+                readoutBackdropBox = pygame.Surface((340, 166))
+                readoutBackdropBox.set_alpha(150)
+                readoutBackdropBox.fill((0, 0, 0))
+                self.screen.blit(readoutBackdropBox, (0, 0))
 
                 # Calculate and display FPS
                 fps = self.clock.get_fps()
