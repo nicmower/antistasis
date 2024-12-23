@@ -57,7 +57,7 @@ ALBEDO = {
 CALC_DEPTH = {
 'stone':    0.5,                         # ft 
 'water':    300,                       # ft
-'ice':      10,                         # ft
+'ice':      5,                         # ft
 'air':      2500                          # ft
 }
 
