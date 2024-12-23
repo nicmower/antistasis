@@ -242,8 +242,8 @@ class GameMap:
                     tile.neighbors.append(neighborTile)
     
     
-    # Scale map values for zoom
     def zoom(self, input):
+        """Scales map surface to zoom."""
         zoomFactor = int(input * self.zoomIncrement)
         self.displaySize.x += zoomFactor
         self.displaySize.y += zoomFactor
@@ -254,16 +254,16 @@ class GameMap:
         if self.displaySun:
             self.scale_sun_map()
 
-
-    # Apply changed mouse position (click and drag) to map
+    
     def drag(self, relativePosition):
+        """Apply changed mouse position (click and drag) to map."""
         self.origin.x += relativePosition[0]
         self.origin.y += relativePosition[1]
         self.check_bounds()
         
-        
-    # Reset screen
+
     def reset_view(self):
+        """Reset display origin and size to recenter view."""
         self.displaySize.x = self.mapLengthsPixels.x
         self.displaySize.y = self.mapLengthsPixels.y
         self.origin.x = self.gameWindow.x/2 - self.displaySize.x/2
