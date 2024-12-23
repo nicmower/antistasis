@@ -20,13 +20,13 @@ HEAT_RATIO_AIR = 0.23           # default/initial percent of sun's radiation abs
 
 RADIATION_RATIO_AIR_TO_SURFACE = 0.5
 
-SURFACE_RADIATION_ABSORPTION_AIR = 0.85
+SURFACE_RADIATION_ABSORPTION_AIR = 0.8
 
 REFLECTION_RATIO_SURFACE_TO_AIR = 0.2
 
 STEFAN_BOLTZMANN_CONSTANT = 0.1714      # BTU/(hr*ft^2*°R^4)
 
-RADIATION_CONTROL_FACTOR = (3.5E-8) # how much radiative heat loss is scaled by... higher = more heat loss per tick
+RADIATION_CONTROL_FACTOR = (2E-8) # how much radiative heat loss is scaled by... higher = more heat loss per tick
 
 NATURAL_CONVECTION_COEFFICIENT = 0.5 # chatgpt says horizontal surfaces should be in 0.5-1 BTU/(ft^2 °F)
 
@@ -469,7 +469,9 @@ class GameMap:
 
 
     def smooth_temps(self):
-        
+        """Averages temperatures across each tile and its eight neighbors,
+           applying only a percentage of the difference between the average
+           and the actual to simulate slower diffusion."""
         directions = [-1, 0, 1]
         neighborIndices = [(x, y) for x in directions for y in directions]
         allTileIndices = [(x, y) for x in range(self.tileCount) for y in range(self.tileCount)]
@@ -486,31 +488,35 @@ class GameMap:
                 neighborTile.airTemperature += (averageTemperature - neighborTile.airTemperature) * TEMPERATURE_SMOOTH_FACTOR
                 
                     
-    # Adjust temp of tiles (apply sun energy, convection from wind, and conduction from air tile to tile
     def heat_calcs(self):
+        """Calculate input and output heats to each tile (both surface and air) and
+           calculate the resulting temperature change. Includes transfer of heat
+           between air and surface. Includes radiative and convective effects.
+           No conduction is used due to the large scale of each tile. All calculations
+           currently rely on fact that each tick/iteration is a single hour.
+           TODO: add in "time step size" as a factor for all calcs so it can be adjusted."""
+        debug = False
     
         # DEBUGGING
-        # worldHeatGainSum = 0
-        # worldHeatLossSum = 0
-        
-        # worldSurfaceHeatGainSum = 0
-        # worldSurfaceHeatLossSum = 0
-        
-        # worldAirHeatGainSum = 0
-        # worldAirHeatLossSum = 0
+        if debug:
+            worldHeatGainSum = 0
+            worldHeatLossSum = 0
+            worldSurfaceHeatGainSum = 0
+            worldSurfaceHeatLossSum = 0
+            worldAirHeatGainSum = 0
+            worldAirHeatLossSum = 0
     
         # Change temp of tiles in sunlight      
         for i in range(self.tileCount):
             for j in range(self.tileCount):
             
-                # Get tile elevation data
+                # Get tile data
                 tile = self.mapData.tiles[i][j]
                 tileType = tile.type
                 surfaceTemperature = tile.temperature
                 airTemperature = tile.airTemperature
-                tileHeatFromAir = tile.heatFromAir
-                tileAirDensity = tile.airDensity
-                tileElevation = tile.elevation
+                airRadiationToSurface = tile.heatFromAir
+
                 surfaceTemperatureRankine = surfaceTemperature + 459.67
                 airTemperatureRankine = airTemperature + 459.67
                 tileLit = tile.sunlightData[self.sunAzimuth]
@@ -528,11 +534,16 @@ class GameMap:
                 # Allow heat input if tile is in sunlight
                 # Scale by latitude (lower at poles)
                 if tileLit:
-                    latitudeFactor = math.sin(math.pi * float(j / self.tileCount)) + 0.5
-                    sunHeatIn = BASE_SUN_HEAT_FLUX * latitudeFactor # BTU (if one iteration per hour)                  
+                    latitudeAngle = abs(90 - ((180/(self.tileCount-1))*j))
+                    latitudeAngleRadians = math.radians(latitudeAngle)
+                    latitudeFactor = math.cos(latitudeAngleRadians)
+                    sunHeatIn = BASE_SUN_HEAT_FLUX * latitudeFactor
+                    #print("tile: " + str(i) + ", " + str(j))
+                    #print(latitudeAngle)
+                    #print(sunHeatIn)
                 else:
                     sunHeatIn = 0
-                    
+
                 # Snow/sea ice inherits ice material properties
                 if tileType == 'snow' or tileType == 'sea_ice':
                     material = 'ice'
@@ -612,9 +623,6 @@ class GameMap:
                 # Add energy from sun
                 sunHeatToSurface = (percentSunHeatToSurface * sunHeatIn)
                 sunHeatToSurfaceAbsorbed = sunHeatToSurface * (1 - surfaceAlbedo)
-                
-                # Radiation back from air
-                airRadiationToSurface = tileHeatFromAir
 
                 # OUT: radiation to air, reflected sun radiation, cold air convection
                 # TODO: when water system active, heat lost through latent heat, or evaporative heat loss
@@ -680,39 +688,38 @@ class GameMap:
                 tile.lastAirTemperature = float(airTemperature)
                 tile.airTemperature = airTemperature + airDeltaTemperature * airTempElevFactor 
                 
-                # worldHeatGainSum += (totalAirHeatGain + totalSurfaceHeatGain) / 1E20
-                # worldHeatLossSum += (totalAirHeatLoss + totalSurfaceHeatLoss) / 1E20
+                if debug:
                 
-                # worldSurfaceHeatGainSum += (totalSurfaceHeatGain) / 1E20
-                # worldSurfaceHeatLossSum += (totalSurfaceHeatLoss) / 1E20
+                    worldHeatGainSum += (totalAirHeatGain + totalSurfaceHeatGain) / 1E20
+                    worldHeatLossSum += (totalAirHeatLoss + totalSurfaceHeatLoss) / 1E20 
+                    worldSurfaceHeatGainSum += (totalSurfaceHeatGain) / 1E20
+                    worldSurfaceHeatLossSum += (totalSurfaceHeatLoss) / 1E20
+                    worldAirHeatGainSum += (totalAirHeatGain) / 1E20
+                    worldAirHeatLossSum += (totalAirHeatLoss) / 1E20
+                    
+                    print('---')
+                    print('Net heat surface: ' + str(surfaceNetHeat))
+                    print('Total heat gain surface: ' + str(totalSurfaceHeatGain))
+                    print('Total heat loss surface: ' + str(totalSurfaceHeatLoss))
+                    print('Sun heating surface: ' + str(sunHeatToSurfaceAbsorbed))
+                    print('Air radiation heating surface: ' + str(airRadiationToSurface))
+                    print('Convection heating surface: ' + str(airConvectionToSurface))
+                    print('Radiation heat loss surface: ' + str(surfaceRadiation))
+                    print('Convection heat loss surface: ' + str(surfaceConvectionToAir))
+                    print('Surface temp: ' + str(surfaceTemperature))
+                    print('Air temp: ' + str(airTemperature))
+                    print('Tile lit: ' + str(tileLit))
+                    print('Radiation heat loss air: ' + str(airRadiation))
 
-                # worldAirHeatGainSum += (totalAirHeatGain) / 1E20
-                # worldAirHeatLossSum += (totalAirHeatLoss) / 1E20
-                
-                # print('---')
-                # print('Net heat surface: ' + str(surfaceNetHeat))
-                # print('Total heat gain surface: ' + str(totalSurfaceHeatGain))
-                # print('Total heat loss surface: ' + str(totalSurfaceHeatLoss))
-                # print('Sun heating surface: ' + str(sunHeatToSurfaceAbsorbed))
-                # print('Air radiation heating surface: ' + str(airRadiationToSurface))
-                # print('Convection heating surface: ' + str(airConvectionToSurface))
-                # print('Radiation heat loss surface: ' + str(surfaceRadiation))
-                # print('Convection heat loss surface: ' + str(surfaceConvectionToAir))
-                # print('Surface temp: ' + str(surfaceTemperature))
-                # print('Air temp: ' + str(airTemperature))
-                # print('Tile lit: ' + str(tileLit))
-                # print('Radiation heat loss air: ' + str(airRadiation))
+        if debug:
+            print('---')
+            print("Total world heat gain = " + str(worldHeatGainSum) + " E20 BTU")
+            print("Total world heat loss = " + str(worldHeatLossSum) + " E20 BTU")
+            print("Total world surface heat gain = " + str(worldSurfaceHeatGainSum) + " E20 BTU")
+            print("Total world surface heat loss = " + str(worldSurfaceHeatLossSum) + " E20 BTU") 
+            print("Total world air heat gain = " + str(worldAirHeatGainSum) + " E20 BTU")
+            print("Total world air heat loss = " + str(worldAirHeatLossSum) + " E20 BTU")
 
-        # print("Total world heat gain = " + str(worldHeatGainSum) + " E20 BTU")
-        # print("Total world heat loss = " + str(worldHeatLossSum) + " E20 BTU")
-        
-        # print("Total world surface heat gain = " + str(worldSurfaceHeatGainSum) + " E20 BTU")
-        # print("Total world surface heat loss = " + str(worldSurfaceHeatLossSum) + " E20 BTU") 
-        
-        # print("Total world air heat gain = " + str(worldAirHeatGainSum) + " E20 BTU")
-        # print("Total world air heat loss = " + str(worldAirHeatLossSum) + " E20 BTU")
-        
-        self.smooth_temps()
         
     # Solve stuff based on tile values
     def calc_velocity(self):

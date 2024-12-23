@@ -248,6 +248,7 @@ class Game:
             self.map.sunAzimuth -= MAX_SUN_AZIMUTH
         self.map.reset_suntiles()
         self.map.heat_calcs()
+        self.map.smooth_temps()
         #self.map.gas_calcs()
         #map.calc_velocity()
         self.map.reset_tiles()
@@ -301,7 +302,7 @@ class Game:
             if self.readout:
 
                 # Backdrop to enhance readout text clarity
-                readoutBackdropBox = pygame.Surface((340, 166))
+                readoutBackdropBox = pygame.Surface((372, 166))
                 readoutBackdropBox.set_alpha(150)
                 readoutBackdropBox.fill((0, 0, 0))
                 self.screen.blit(readoutBackdropBox, (0, 0))
