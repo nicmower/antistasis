@@ -15,7 +15,6 @@ GREENHOUSE_EFFECT_INCREMENT = 0.05
 
 TIME_STEP = 1 # hrs
 
-# maybe set to 1.198E10
 BASE_SUN_HEAT_FLUX = 1.2028 * 10**10    # BTU/hr per square mile from sun before albedo and latitude calcs
 
 HEAT_RATIO_AIR = 0.23           # default/initial percent of sun's radiation absorbed by atmosphere
@@ -32,7 +31,7 @@ RADIATION_CONTROL_FACTOR = (1E-9) # how much radiative heat loss is scaled by...
 
 NATURAL_CONVECTION_COEFFICIENT = 0.5 # chatgpt says horizontal surfaces should be in 0.5-1 BTU/(ft^2 °F)
 
-TEMPERATURE_SMOOTH_FACTOR = 0.005 # how much closer to average air temperature of their surroundings tiles get each smoothing iteration
+TEMPERATURE_SMOOTH_FACTOR = 0.003 # how much closer to average air temperature of their surroundings tiles get each smoothing iteration
 
 # Material property dictionaries... maybe move to a per-material dictionary of propreties?
 HEAT_CAPACITY = {
@@ -273,8 +272,11 @@ class GameMap:
         self.check_bounds()
 
 
-    # Check map zoom/pan meets restrictions
+    
     def check_bounds(self):
+        """A function that checks if map is not out of the bounds of the screen.
+           Edges of displayed map are locked inside the edges of the screen.
+           If zoomed too far in map is scaled up."""
     
         # Set to min size if zoomed too far in
         if self.displaySize.x < 100:

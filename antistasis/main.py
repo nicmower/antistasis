@@ -32,6 +32,8 @@ MAX_SUN_HOUR_ANGLE = 360       # degrees
 SIM_TICK_DURATION = 1000    # ms
 SIM_SPEED_LEVELS = [0, 1, 2, 5, 10, 25]
 
+WORLD_SIZE = 35
+
 # Pygame settings
 EVENTS_USED = [pygame.KEYDOWN,          pygame.QUIT,        pygame.MOUSEBUTTONDOWN, \
                pygame.MOUSEBUTTONUP,    pygame.MOUSEWHEEL,  pygame.MOUSEMOTION]
@@ -209,7 +211,7 @@ class Game:
         log("Interface loaded.")
 
         # Initialize map object
-        self.map = GameMap(self.window, self.graphics, 32)
+        self.map = GameMap(self.window, self.graphics, WORLD_SIZE)
         log("Map initialized.")
 
         # Font for on-screen text
@@ -302,7 +304,7 @@ class Game:
             if self.readout:
 
                 # Backdrop to enhance readout text clarity
-                readoutBackdropBox = pygame.Surface((372, 166))
+                readoutBackdropBox = pygame.Surface((392, 166))
                 readoutBackdropBox.set_alpha(150)
                 readoutBackdropBox.fill((0, 0, 0))
                 self.screen.blit(readoutBackdropBox, (0, 0))
