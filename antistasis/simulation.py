@@ -1,100 +1,160 @@
+# Standard libraries
 import math
 import random
+
+# Local imports
 from graphics import *
 from ui import *
 
-# Map properties classes
-class Map_Actual_Size:
-    def __init__(self, sizePx):
-        self.x = sizePx
-        self.y = sizePx  
-class Map_Display_Size:
-    def __init__(self, sizeX, sizeY):
-        self.x = sizeX
-        self.y = sizeY
-class Map_Origin:
-    def __init__(self, originX, originY):
-        self.x = originX
-        self.y = originY
+#############
+# CONSTANTS #
+#############
 
+# Simulation/controls
+GREENHOUSE_EFFECT_INCREMENT = 0.05
 
-# Classes to hold map data
+TIME_STEP = 1 # hrs
+
+BASE_SUN_HEAT_FLUX = 1.2028 * 10**10    # BTU/hr per square mile from sun before albedo and latitude calcs
+
+HEAT_RATIO_AIR = 0.23           # default/initial percent of sun's radiation absorbed by atmosphere
+
+RADIATION_RATIO_AIR_TO_SURFACE = 0.5
+
+SURFACE_RADIATION_ABSORPTION_AIR = 0.8
+
+REFLECTION_RATIO_SURFACE_TO_AIR = 0.2
+
+STEFAN_BOLTZMANN_CONSTANT = 0.1714      # BTU/(hr*ft^2*°R^4)
+
+RADIATION_CONTROL_FACTOR = (1E-9) # how much radiative heat loss is scaled by... higher = more heat loss per tick
+
+NATURAL_CONVECTION_COEFFICIENT = 0.5 # chatgpt says horizontal surfaces should be in 0.5-1 BTU/(ft^2 °F)
+
+TEMPERATURE_SMOOTH_FACTOR = 0.003 # how much closer to average air temperature of their surroundings tiles get each smoothing iteration
+
+# Material property dictionaries... maybe move to a per-material dictionary of propreties?
+HEAT_CAPACITY = {
+'stone':    0.23885,                    # BTU/lb F
+'water':    1.001,                      # BTU/lb F
+'ice':      0.5,                        # BTU/lb F
+'air':      0.17128                     # BTU/lb F
+}
+
+DENSITY = {
+'stone':    175,                        # lb / ft^3
+'water':    62.4,                       # lb / ft^3
+'ice':      57.24644,                   # lb / ft^3
+'air':      0.075                       # lb / ft^3
+}
+
+ALBEDO = {
+'stone':    0.35,
+'water':    0.075,
+'ice':      0.75,
+'air':      0.3
+}
+
+CALC_DEPTH = {
+'stone':    5,                         # ft 
+'water':    300,                       # ft
+'ice':      5,                         # ft
+'air':      2500                          # ft
+}
+
+EMISSIVITY = {
+'surface':  0.9,
+'air':      0.7
+}
+
+# Graphics
+TILE_GRAPHIC_SIZE = 64 # px
+
+#####################
+# CLASSES/FUNCTIONS #
+#####################
+
 class Tile:
+    """Class which stores the data within one "tile", or
+       a 1X1 mile square that has properties like surface
+       temperature, elevation, and air temperature.
+       Initializes to room temperature/sea level values."""
+
     def __init__(self, x, y):
+        
+        # Location
         self.x = x
         self.y = y
-        self.elevation = 0 # feet
-        self.temperature = 70 # fahrenheit
         
-        self.airTemperature = 70 # fahrenheit
-        self.lastAirTemperature = 70
-        self.airPressure = 0 # psi (lb/in^2)
-        self.airDensity = 0.076474252 # lb/ft^3
+        # Surface values
+        self.elevation = 0              # ft
+        self.temperature = 70           # degrees F
         
+        # Air values
+        self.airTemperature = 70        # degrees F
+        self.lastAirTemperature = 70    # degrees F
+        self.airPressure = 14.7         # psi
+        self.airDensity = 0.0765        # lb/ft^3
+        
+        # Calculation values
         self.airTempElevFactor = 1
         self.airPresElevFactor = 1
         self.airDensElevFactor = 1
         self.heatFromAir = 0
         
-        self.windSpeedMagnitude = random.randint(1, 10)
+        # Wind values
+        self.windSpeedMagnitude = 5     # mph
         self.windSpeedAngle = 0
         
+        # Sun values
         self.sunIntensity = 0
         self.sunlightData = {}
         
+        # Display values
         self.graphic = "blank"
         self.graphicOverlay = []
-        
         self.type = None
-
-
-# Holds data for all tiles for min/max/avg calculations
-# Subclass to Map
-class Value_Lists:
-    def __init__(self, mapData, tileCount):
-        self.mapData = mapData
-        self.tileCount = tileCount
-        self.reload()
-    def reload(self):
-        self.elevation = []
-        self.temperature = []
-        self.airTemperature = []
-        self.airPressure = []
-        self.airDensity = []
-        self.windSpeedMagnitude = []
-        for i in range(self.tileCount):
-            rowElevation = []
-            rowTemperature = []
-            rowAirTemperature = []
-            rowAirPressure = []
-            rowAirDensity = []
-            rowWindSpeedMagnitude = []
-            for j in range(self.tileCount):
-                tile = self.mapData.tiles[i][j]
-                rowElevation.append(tile.elevation)
-                rowTemperature.append(tile.temperature)
-                rowAirTemperature.append(tile.airTemperature)
-                rowAirPressure.append(tile.airPressure)
-                rowAirDensity.append(tile.airDensity)
-                rowWindSpeedMagnitude.append(tile.windSpeedMagnitude)
-            self.elevation.append(rowElevation)
-            self.temperature.append(rowTemperature)
-            self.airTemperature.append(rowAirTemperature)
-            self.airPressure.append(rowAirPressure)
-            self.airDensity.append(rowAirDensity)
-            self.windSpeedMagnitude.append(rowWindSpeedMagnitude)
-
+        
+        # Stores Tile objects of neighboring tiles
+        self.neighbors = []
 
 # Holds subclasses representing tile data as well as map dimensions, controls, etc.
 class GameMap:
+    """Stores all tile data."""
 
-    # Initialize game map
+    #############################
+    # UTILITY CLASSES/FUNCTIONS #
+    #############################
+
+    class XY_Data:
+        """Utility class to store a pair of values 
+           accesible by obj.x and obj.y."""
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y  
+
+    class Map_Data:
+        """Class used to store data for each tile,
+           as a list of Tile objects."""
+        def __init__(self, mapSize):
+            # Generate map tile values
+            self.tiles = []
+            for i in range(mapSize):
+                row = []
+                for j in range(mapSize):
+                    tile = Tile(i, j)
+                    row.append(tile)
+                self.tiles.append(row)
+    
+    ########################################
+    # MAIN MAP CLASS FUNCTIONS AND CLASSES #
+    ########################################
+
     def __init__(self, gameWindow, graphics, mapSize, antialiasing=True):
         
         # Initialize display values (not changing)
-        self.tileRes = 64
         self.tileCount = mapSize
-        self.areaTiles = self.tileCount ** 2
+        self.mapAreaTiles = self.tileCount ** 2
         self.gameWindow = gameWindow
         self.graphics = graphics
         self.antialiasing = antialiasing
@@ -106,29 +166,10 @@ class GameMap:
 
         # Sun settings
         self.sunGraphics = {}
-        self.sunAzimuth = 0 # 0 to 360 degrees (0 is x=0)
-        self.sunAltitude = 0 # 0 to 360 degrees (0 is half of map height)
+        self.sunHourAngle = 0 # 0 to 360 degrees (0 is x=0)
+        self.sunLatitude = 0 # 0 to 360 degrees (0 is half of map height)
         
-        self.heatFlux = 1.2028 * 10**10 # BTU/hr per square mile from sun before albedo
-        self.percentRadAtmos = 0.9
-        
-        self.stoneHeatCapacity = 0.23885 # BTU/lb F 
-        self.waterHeatCapacity = 1.001 # BTU/lb F 
-        self.airHeatCapacity = 0.17128 # BTU/lb F
-        
-        self.stoneMass = 4.795 * 10**10 # lb per volume, 1mi x 1mi x 10ft
-        self.waterDensity = 62.4 # lb / ft^3
-        self.iceDensity = 57.24644 # lb / ft^3
-        
-        self.stoneAlbedo = 0.35
-        self.waterAlbedo = 0.075
-        self.iceAlbedo = 0.75
-        self.snowAlbedo = 0.75
-        self.atmosAlbedo = 0.3
-        
-        self.greenhouse = 0.1
-        
-        self.boltzmann = 0.1714 * 10**-8 # Btu/hr ft2 °R4 ***RANKINE
+        self.greenhouse = 0.0
 
         # Tie to contour class so it can extract min/max data
         self.contourEnabled = False
@@ -142,46 +183,68 @@ class GameMap:
         self.panLimitPaddingY = int(0.05 * gameWindow.y)
 
         # Actual size = tile size in px * number of tiles
-        sizePixels = self.tileRes * self.tileCount
-        self.size = Map_Actual_Size(sizePixels)
-        self.areaPixels = self.size.x * self.size.y
+        mapSideLengthPixels = TILE_GRAPHIC_SIZE * self.tileCount
+        self.mapLengthsPixels = self.XY_Data(mapSideLengthPixels, mapSideLengthPixels)
+        self.mapAreaPixels = self.mapLengthsPixels.x * self.mapLengthsPixels.y
 
         # Initialize display size (modified on zoom)
-        self.displaySize = Map_Display_Size(self.size.x, self.size.y)
+        self.displaySize = self.XY_Data(self.mapLengthsPixels.x, self.mapLengthsPixels.y)
 
         # Initialize map in screen center
-        self.origin = Map_Origin(self.gameWindow.x/2 - self.displaySize.x/2, \
-                                 self.gameWindow.y/2 - self.displaySize.y/2)
+        self.origin = self.XY_Data(self.gameWindow.x/2 - self.displaySize.x/2, \
+                                   self.gameWindow.y/2 - self.displaySize.y/2)
 
         # Generate map tile values (initially empty/blank, then algorithm run)
         self.seaLevel = 0
         self.mapData = self.Map_Data(self.tileCount)
         self.rand_gen()
-        self.valueList = Value_Lists(self.mapData, self.tileCount)
         self.reset_tiles()
         self.calc_sun()
         self.reset_suntiles()
-        
+
+        # Collect neighboring tile objects for each tile
+        self.collect_neighbors()
+
         # Print information to stdout
-        log("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.size.x) + " x " + str(self.size.y) + " px)")
-        log("Map Area: " + str(self.areaTiles) + " tiles (" + str(self.areaPixels) + " px)")
+        log("Map Size: " + str(self.tileCount) + " x " + str(self.tileCount) + " tiles (" + str(self.mapLengthsPixels.x) + " x " + str(self.mapLengthsPixels.y) + " px)")
+        log("Map Area: " + str(self.mapAreaTiles) + " tiles (" + str(self.mapAreaPixels) + " px)")
 
-
-    # Subclass for Map to store tile data
-    class Map_Data:
-        def __init__(self, mapSize):
-            # Generate map tile values
-            self.tiles = []
-            for i in range(mapSize):
-                row = []
-                for j in range(mapSize):
-                    tile = Tile(i, j)
-                    row.append(tile)
-                self.tiles.append(row)
+    
+    def increase_greenhouse_effect(self, increment=GREENHOUSE_EFFECT_INCREMENT):
+        """Increases greenhouse factor (or how much heat is retained by planet)."""
+        self.greenhouse += increment
     
     
-    # Scale map values for zoom
+    def decrease_greenhouse_effect(self, increment=GREENHOUSE_EFFECT_INCREMENT):
+        """Decreases greenhouse factor (or how much heat is retained by planet)."""
+        self.greenhouse -= increment
+    
+    
+    def collect_neighbors(self):      
+        """Find all Tile objects that are surrounding each Tile object and
+           store their references in a list as a property of that tile"""
+        directions = [-1, 0, 1]
+        neighborIndices = [(x, y) for x in directions for y in directions]
+        for i in range(self.tileCount):
+            for j in range(self.tileCount):
+                tile = self.mapData.tiles[i][j]
+                for neighborIndex in neighborIndices:
+                    neighborX = i + neighborIndex[0]
+                    if neighborX > self.tileCount-1: 
+                        neighborX = 0
+                    elif neighborX < 0:
+                        neighborX = self.tileCount-1
+                    neighborY = j + neighborIndex[1]   
+                    if neighborY > self.tileCount-1: 
+                        neighborY = 0
+                    elif neighborY < 0:
+                        neighborY = self.tileCount-1  
+                    neighborTile = self.mapData.tiles[neighborX][neighborY]
+                    tile.neighbors.append(neighborTile)
+    
+    
     def zoom(self, input):
+        """Scales map surface to zoom."""
         zoomFactor = int(input * self.zoomIncrement)
         self.displaySize.x += zoomFactor
         self.displaySize.y += zoomFactor
@@ -192,25 +255,28 @@ class GameMap:
         if self.displaySun:
             self.scale_sun_map()
 
-
-    # Apply changed mouse position (click and drag) to map
+    
     def drag(self, relativePosition):
+        """Apply changed mouse position (click and drag) to map."""
         self.origin.x += relativePosition[0]
         self.origin.y += relativePosition[1]
         self.check_bounds()
         
-        
-    # Reset screen
+
     def reset_view(self):
-        self.displaySize.x = self.size.x
-        self.displaySize.y = self.size.y
+        """Reset display origin and size to recenter view."""
+        self.displaySize.x = self.mapLengthsPixels.x
+        self.displaySize.y = self.mapLengthsPixels.y
         self.origin.x = self.gameWindow.x/2 - self.displaySize.x/2
         self.origin.y = self.gameWindow.y/2 - self.displaySize.y/2
         self.check_bounds()
 
 
-    # Check map zoom/pan meets restrictions
+    
     def check_bounds(self):
+        """A function that checks if map is not out of the bounds of the screen.
+           Edges of displayed map are locked inside the edges of the screen.
+           If zoomed too far in map is scaled up."""
     
         # Set to min size if zoomed too far in
         if self.displaySize.x < 100:
@@ -245,10 +311,10 @@ class GameMap:
                 self.origin.y = self.gameWindow.y - self.panLimitPaddingY - self.displaySize.y
 
 
-    # Prototype algorithm for world generation
     def rand_gen(self):
+        """Random generation of world map."""
     
-        seedCount = int(self.areaTiles / 2)
+        seedCount = int(self.mapAreaTiles / 2)
         elevationBounds = (-40000, 60000)
         avgOceanDepth = -12500
         seedList = []
@@ -363,14 +429,19 @@ class GameMap:
         self.elevation_calcs()
         
         # Run a few times to smooth out initial values
-        for i in range(3):
-            self.calc_velocity()
+        #for i in range(3):
+            #self.calc_velocity()
               
               
     # Apply effect to temp, pressure, and density according to tile elevation
     # Values should represent air at whatever elevation is just above surface (incl. ocean surface)
     # Should only apply once !!! after initial value generation (rand_gen)
     def elevation_calcs(self):
+        """A function run at startup to calculate impact of current elevation of
+           tile on the effective temperature/pressure at the surface. Based on
+           Lapse Rate.
+           Data is saved as lists to each Tile object for quick lookup."""
+    
     
         # Source: https://www.engineeringtoolbox.com/standard-atmosphere-d_604.html
         # Conversion factors to adjust temp/pressure/density to elevation
@@ -405,62 +476,99 @@ class GameMap:
                 tile.airPressure = tile.airPressure * pressure_from_elev(tileElevation)
                 tile.airDensity = tile.airDensity * density_from_elev(tileElevation)
 
-    
-    # Adjust temp of tiles (apply sun energy, convection from wind, and conduction from air tile to tile
+
+    def smooth_temps(self):
+        """Averages temperatures across each tile and its eight neighbors,
+           applying only a percentage of the difference between the average
+           and the actual to simulate slower diffusion."""
+        directions = [-1, 0, 1]
+        neighborIndices = [(x, y) for x in directions for y in directions]
+        allTileIndices = [(x, y) for x in range(self.tileCount) for y in range(self.tileCount)]
+        random.shuffle(allTileIndices)
+        for tileIndex in allTileIndices:
+            tile = self.mapData.tiles[tileIndex[0]][tileIndex[1]]
+            airTemperature = tile.airTemperature
+            totalTemperature = airTemperature
+            for neighborTile in tile.neighbors:
+                totalTemperature += neighborTile.airTemperature
+            averageTemperature = totalTemperature / 9
+            tile.airTemperature += (averageTemperature - tile.airTemperature) * TEMPERATURE_SMOOTH_FACTOR
+            for neighborTile in tile.neighbors:
+                neighborTile.airTemperature += (averageTemperature - neighborTile.airTemperature) * TEMPERATURE_SMOOTH_FACTOR
+                
+                    
     def heat_calcs(self):
+        """Calculate input and output heats to each tile (both surface and air) and
+           calculate the resulting temperature change. Includes transfer of heat
+           between air and surface. Includes radiative and convective effects.
+           No conduction is used due to the large scale of each tile. All calculations
+           currently rely on fact that each tick/iteration is a single hour.
+           TODO: add in "time step size" as a factor for all calcs so it can be adjusted."""
+        debug = False
+    
+        # DEBUGGING
+        if debug:
+            worldHeatGainSum = 0
+            worldHeatLossSum = 0
+            worldSurfaceHeatGainSum = 0
+            worldSurfaceHeatLossSum = 0
+            worldAirHeatGainSum = 0
+            worldAirHeatLossSum = 0
     
         # Change temp of tiles in sunlight      
         for i in range(self.tileCount):
             for j in range(self.tileCount):
             
-                # Get tile elevation data
+                # Get tile data
                 tile = self.mapData.tiles[i][j]
                 tileType = tile.type
-                tileTemperature = tile.temperature
-                tileAirTemperature = tile.airTemperature
-                tileHeatFromAir = tile.heatFromAir
-                tileAirDensity = tile.airDensity
-                tileElevation = tile.elevation
-                tileTemperatureRankine = tileTemperature + 459.67
-                tileAirTemperatureRankine = tileAirTemperature + 459.67
-                tileLit = tile.sunlightData[self.sunAzimuth]
+                surfaceTemperature = tile.temperature
+                airTemperature = tile.airTemperature
+                airRadiationToSurface = tile.heatFromAir
+                surfaceTemperatureRankine = surfaceTemperature + 459.67
+                airTemperatureRankine = airTemperature + 459.67
+                cosineSolarZenithAngle = tile.sunlightData[self.sunHourAngle]
                 
                 airTempElevFactor = self.airTempElevFactor
                 
-                # Change temp if tile is sunlit
-                if tileLit:
-                    latitudeFactor = math.sin(math.pi * float(j / self.tileCount)) + 0.5
-                    heatAdded = self.heatFlux * latitudeFactor # BTU (if one iteration per hour)         
+                # Correct for values below absolute zero
+                if surfaceTemperatureRankine < 0:
+                    tile.temperature = surfaceTemperature = -459.67
+                    surfaceTemperatureRankine = 0
+                if airTemperatureRankine < 0:
+                    tile.airTemperature = airTemperature = -459.67
+                    airTemperatureRankine = 0
+                
+                # Allow heat input if tile is in sunlight
+                # Scale by latitude (lower at poles)
+                sunHeatIn = BASE_SUN_HEAT_FLUX * cosineSolarZenithAngle
+
+
+                # Snow/sea ice inherits ice material properties
+                if tileType == 'snow' or tileType == 'sea_ice':
+                    material = 'ice'
                 else:
-                    heatAdded = 0
+                    material = tileType
                     
-                # Tile-based heat calc values (material properties)
-                if tileType == "stone":
-                    surfaceAlbedo = self.stoneAlbedo
-                    heatCapacity = self.stoneHeatCapacity
-                    surfaceMass = self.stoneMass
-                elif tileType == "water":
-                    surfaceAlbedo = self.waterAlbedo
-                    heatCapacity = self.waterHeatCapacity
-                    surfaceMass = self.waterDensity * 5280.0**3
-                elif tileType == "snow":
-                    surfaceAlbedo = self.snowAlbedo
-                    if tileAirTemperature > 32:
+                # Collect material properties
+                surfaceAlbedo = ALBEDO[material]
+                heatCapacity = HEAT_CAPACITY[material]
+                heatCalcDepth = CALC_DEPTH[material]
+                
+                # "Calc Depth" is used to calculate finite temp change - simplifying each tile to single point
+                # with a "mass" determined by the volume and density, volume calculated from 1 mile * 1 mile * calc depth
+                surfaceMass = DENSITY[material] * heatCalcDepth * 5280.0**2
+
+                # Warm air or surface reduces albedo
+                if tileType == "snow" or tileType == "ice":
+                    if airTemperature > 32:
                         surfaceAlbedo -= 0.1
-                    if tileTemperature > 32:
+                    if surfaceTemperature > 32:
                         surfaceAlbedo -= 0.15
-                    heatCapacity = self.stoneHeatCapacity
-                    surfaceMass = self.stoneMass
-                elif tileType == "sea_ice":
-                    surfaceAlbedo = self.iceAlbedo
-                    if tileAirTemperature > 32:
-                        surfaceAlbedo -= 0.1
-                    if tileTemperature > 32:
-                        surfaceAlbedo -= 0.15
-                    heatCapacity = self.waterHeatCapacity
-                    surfaceMass = self.iceDensity * 5280.0**3
-                 
-                airMass = (5280.0 ** 3) * tileAirDensity
+
+                # Uses Calc Depth as well, only simulating the first layer of air above the surface
+                # TODO: once air gas calcs ironed out, use air density instead of static value
+                airMass = (CALC_DEPTH['air'] * 5280**2) * DENSITY['air']
                  
                 # Air to surface convection
                 # Convection coefficient maxes out at 120mph wind and 175 W/m^2 K
@@ -470,8 +578,8 @@ class GameMap:
                 else:
                     airConvectionCoefficient = tile.windSpeedMagnitude / 176.0
                 airConvectionCoefficient = airConvCoefBounds[0] + \
-                                         ((airConvCoefBounds[1] - airConvCoefBounds[0]) * airConvectionCoefficient)
-                deltaTemp = tileAirTemperature - tileTemperature
+                                          (airConvCoefBounds[1] - airConvCoefBounds[0]) * (tile.windSpeedMagnitude / 176.0)**0.5
+                airConvectionCoefficient = max(airConvectionCoefficient, NATURAL_CONVECTION_COEFFICIENT)
                 
                 # Surface roughness increase on surface area estimation
                 # Rougher surface = more surface area for convection
@@ -482,46 +590,137 @@ class GameMap:
                 else:
                     roughnessFactor = 1
                 
+                # Calculate surface/air temperature difference
+                deltaTemp = airTemperature - surfaceTemperature
+                
                 # BTU from (BTU/ft^2 F) * (ft^2) * (degrees F)
-                airToSurfaceConvection = (airConvectionCoefficient*roughnessFactor) * (5280**2) * deltaTemp
-                 
+                convectionEnergy = (airConvectionCoefficient*roughnessFactor) * (5280**2) * deltaTemp
+                
+                # Add convective heat gain if positive
+                if convectionEnergy > 0:
+                    airConvectionToSurface = convectionEnergy
+                else:
+                    airConvectionToSurface = 0
+
+                # Add convective heat loss if negative
+                if convectionEnergy < 0:
+                    surfaceConvectionToAir = -1*convectionEnergy
+                else:
+                    surfaceConvectionToAir = 0
+                
                 # Calculate energy breakdown for surface
                 # apply greenhouse factor to percent of sun energy absorbed by atmosphere
                 # remaining energy goes to surface
-                percentRadAtmos = self.percentRadAtmos * self.greenhouse
-                percentRadSurf = 1 - percentRadAtmos
+                percentSunHeatToAir = HEAT_RATIO_AIR
+                percentSunHeatToSurface = 1 - percentSunHeatToAir
                 
-                surfaceEnergy = (percentRadSurf * heatAdded) + tileHeatFromAir
-                tile.heatFromAir = 0
-
+                ########################
                 # Surface heat transfer
-                totalSurfHeatReflected = surfaceEnergy * surfaceAlbedo   
-                totalSurfHeatEmitted = self.boltzmann * tileTemperatureRankine**4 * (5280.0**2)
-                totalSurfHeatLoss = totalSurfHeatEmitted + totalSurfHeatReflected
-                totalSurfHeatAdded = surfaceEnergy - totalSurfHeatLoss + airToSurfaceConvection
-                surfDeltaT = totalSurfHeatAdded / (surfaceMass * heatCapacity)
-                tile.temperature = tileTemperature + surfDeltaT
-
-                # Calculate energy breakdown for atmosphere, add lost surface energy
-                atmosEnergy = (percentRadAtmos * heatAdded) + (totalSurfHeatLoss * self.greenhouse)
-
-                # Atmosphere 
-                totalAtmosHeatReflected = atmosEnergy * self.atmosAlbedo   
-                totalAtmosHeatEmitted = self.boltzmann * tileAirTemperatureRankine**4 * (5280.0**2)
-                totalAtmosHeatLoss = totalAtmosHeatReflected + totalAtmosHeatReflected
-                totalAtmosHeatAdded = atmosEnergy - totalAtmosHeatEmitted - airToSurfaceConvection
-                atmosDeltaT = totalAtmosHeatAdded / (airMass * self.airHeatCapacity)
+                ########################
                 
-                tile.heatFromAir = totalAtmosHeatLoss * self.greenhouse
+                # IN: sun radiation, atmosphere re-radiation, hot air convection
+                
+                # Add energy from sun
+                sunHeatToSurface = (percentSunHeatToSurface * sunHeatIn)
+                sunHeatToSurfaceAbsorbed = sunHeatToSurface * (1 - surfaceAlbedo)
 
-                if atmosDeltaT < 0:
+                # OUT: radiation to air, reflected sun radiation, cold air convection
+                # TODO: when water system active, heat lost through latent heat, or evaporative heat loss
+
+                # Radiation back to air
+                surfaceRadiation = RADIATION_CONTROL_FACTOR * STEFAN_BOLTZMANN_CONSTANT * EMISSIVITY['surface'] * (5280.0**2) * surfaceTemperatureRankine**4.0
+                
+                # Reflected sun radiation
+                surfaceReflection = sunHeatToSurface * surfaceAlbedo
+
+                ### SUM GAINS
+                totalSurfaceHeatGain = sunHeatToSurfaceAbsorbed + airRadiationToSurface + airConvectionToSurface
+                
+                ### SUM LOSSES
+                totalSurfaceHeatLoss = surfaceRadiation + surfaceConvectionToAir
+                
+                ### NET HEAT CHANGE
+                surfaceNetHeat = totalSurfaceHeatGain - totalSurfaceHeatLoss
+                surfaceDeltaTemperature = surfaceNetHeat / (surfaceMass * heatCapacity)
+                tile.temperature = surfaceTemperature + surfaceDeltaTemperature
+
+                ####################
+                # Air heat transfer
+                ####################
+                
+                # IN: sun radiation, surface re-radiation, hot surface convection, a percent of surface reflected energy
+
+                # Add energy from sun
+                sunHeatToAir = (percentSunHeatToAir * sunHeatIn)
+                sunHeatToAirAbsorbed = sunHeatToAir * (1 - ALBEDO['air'])
+
+                # Reabsorb surface radiation
+                surfaceRadiationToAir = surfaceRadiation * (SURFACE_RADIATION_ABSORPTION_AIR * (1 + self.greenhouse))
+                
+                # Reabsorb surface reflection
+                surfaceReflectionToAir = surfaceReflection * (REFLECTION_RATIO_SURFACE_TO_AIR * (1 + self.greenhouse))
+                
+                # OUT: radiation to surface/space, reflected sun radiation, cold surface convection
+                
+                # Radiation to space and surface (50/50)
+                airRadiation = RADIATION_CONTROL_FACTOR * STEFAN_BOLTZMANN_CONSTANT * (EMISSIVITY['air'] * (1 + self.greenhouse)) * (5280.0**2) * airTemperatureRankine**4.0
+                
+                # Atmosphere reflection of sun radiation
+                airReflectionToSpace = sunHeatToAir * ALBEDO['air']
+
+                ### SUM GAINS
+                totalAirHeatGain = sunHeatToAirAbsorbed + surfaceRadiationToAir + surfaceConvectionToAir + surfaceReflectionToAir
+                
+                ### SUM LOSSES
+                totalAirHeatLoss = airRadiation + airConvectionToSurface
+                
+                ### NET HEAT CHANGE
+                airNetHeat = totalAirHeatGain - totalAirHeatLoss
+                airDeltaTemperature = airNetHeat / (airMass * HEAT_CAPACITY['air'])
+
+                # By default, half of radiation from atmosphere reabsorbed by the surface
+                tile.heatFromAir = airRadiation * RADIATION_RATIO_AIR_TO_SURFACE
+
+                if airDeltaTemperature < 0:
                     airTempElevFactor = 1
-                
-                # Save previous value to calculate change in pressure/density
-                tile.lastAirTemperature = float(tileAirTemperature)
-                tile.airTemperature = tileAirTemperature + atmosDeltaT * airTempElevFactor 
-                
 
+                # Save previous value to calculate change in pressure/density
+                tile.lastAirTemperature = float(airTemperature)
+                tile.airTemperature = airTemperature + airDeltaTemperature * airTempElevFactor 
+                
+                if debug:
+                
+                    worldHeatGainSum += (totalAirHeatGain + totalSurfaceHeatGain) / 1E20
+                    worldHeatLossSum += (totalAirHeatLoss + totalSurfaceHeatLoss) / 1E20 
+                    worldSurfaceHeatGainSum += (totalSurfaceHeatGain) / 1E20
+                    worldSurfaceHeatLossSum += (totalSurfaceHeatLoss) / 1E20
+                    worldAirHeatGainSum += (totalAirHeatGain) / 1E20
+                    worldAirHeatLossSum += (totalAirHeatLoss) / 1E20
+                    
+                    print('---')
+                    print('Net heat surface: ' + str(surfaceNetHeat))
+                    print('Total heat gain surface: ' + str(totalSurfaceHeatGain))
+                    print('Total heat loss surface: ' + str(totalSurfaceHeatLoss))
+                    print('Sun heating surface: ' + str(sunHeatToSurfaceAbsorbed))
+                    print('Air radiation heating surface: ' + str(airRadiationToSurface))
+                    print('Convection heating surface: ' + str(airConvectionToSurface))
+                    print('Radiation heat loss surface: ' + str(surfaceRadiation))
+                    print('Convection heat loss surface: ' + str(surfaceConvectionToAir))
+                    print('Surface temp: ' + str(surfaceTemperature))
+                    print('Air temp: ' + str(airTemperature))
+                    print('Tile lit: ' + str(tileLit))
+                    print('Radiation heat loss air: ' + str(airRadiation))
+
+        if debug:
+            print('---')
+            print("Total world heat gain = " + str(worldHeatGainSum) + " E20 BTU")
+            print("Total world heat loss = " + str(worldHeatLossSum) + " E20 BTU")
+            print("Total world surface heat gain = " + str(worldSurfaceHeatGainSum) + " E20 BTU")
+            print("Total world surface heat loss = " + str(worldSurfaceHeatLossSum) + " E20 BTU") 
+            print("Total world air heat gain = " + str(worldAirHeatGainSum) + " E20 BTU")
+            print("Total world air heat loss = " + str(worldAirHeatLossSum) + " E20 BTU")
+
+        
     # Solve stuff based on tile values
     def calc_velocity(self):
         # Shuffle tiles as to avoid order of operations influencing result
@@ -664,8 +863,8 @@ class GameMap:
                 tile.airPressure = tileAirDensity * gasConstant * tileAirTemperatureRankine * psfToPsi
                 
 
-
     # Solve stuff based on tile values
+    # NOTE: NOT changing temp and pressure, only calculates wind speed/velocity
     def calc_temp_and_pressure(self):
     
         # Shuffle tiles as to avoid order of operations influencing result
@@ -755,13 +954,13 @@ class GameMap:
     def update_map(self):
     
         # Create a surface and pass in a tuple containing its length and width
-        self.mapSurface = pygame.Surface((self.size.x, self.size.y))
+        self.mapSurface = pygame.Surface((self.mapLengthsPixels.x, self.mapLengthsPixels.y))
         self.mapSurface.fill((120, 120, 120))
         for i in range(self.tileCount):
             for j in range(self.tileCount):
                 tile = self.mapData.tiles[i][j]
                 tileType = tile.graphic
-                currentPosition = (i*self.tileRes, j*self.tileRes)
+                currentPosition = (i*TILE_GRAPHIC_SIZE, j*TILE_GRAPHIC_SIZE)
                 tileGraphic = self.graphics.data[tileType]
                 self.mapSurface.blit(tileGraphic, currentPosition)
                 if self.windArrows:
@@ -779,80 +978,89 @@ class GameMap:
     def reset_suntiles(self):
     
         # Generate blank map layer
-        self.sunLayerSurface = self.sunGraphics[self.sunAzimuth]
+        self.sunLayerSurface = self.sunGraphics[self.sunHourAngle]
         self.scale_sun_map()
 
 
-    # Sun position & lighting calculation
-    # Meant to run once prior to gameplay - calculation done ahead of time and saved as lists in tile data
     def calc_sun(self):
+        """A function run at startup to calculate position of sun and whether each
+           tile is sun-lit at each time increment in the simulation (0-24hr).
+           Data is saved as lists to each Tile object for quick lookup."""
 
-        # Reference graphics
+        # Load sun graphics
         sunGraphic = self.graphics.data["sun"]
         shadowImage = self.graphics.data["shadow_50percent"]
 
-        # Loop through degrees of azimuth, 1-360
-        sunDataResolution = 15 # increments for data loop
-        for azimuth in range(0,360,sunDataResolution):
+        # Determine the angular change of the sun for each time step
+        # 1 hr = 15 deg, 0.5 hr = 7.5 deg, etc.
+        sunDataResolution = int(360 / (24 / TIME_STEP))
+        
+        # Loop through degrees of Hour Angle (only the correct Hour Angle at center of sun location)
+        for hourAngleCenter in range(0, 360, sunDataResolution):
 
             # Generate blank map layer
-            sunLayerSurface = pygame.Surface((self.size.x, self.size.y), pygame.SRCALPHA)
+            sunLayerSurface = pygame.Surface((self.mapLengthsPixels.x, self.mapLengthsPixels.y), pygame.SRCALPHA)
             sunLayerSurface.fill((255, 255, 255, 0))
 
             # Calculate center location of sun on map
             dieoutFactor = 1.475
             
+            # Determine position of the sun based on hour angle/latitude
             halfTileCount = float(self.tileCount) / 2.0
-            sunPositionY = halfTileCount + (self.sunAltitude / 90) * halfTileCount
-            sunPositionX = float(self.tileCount) * (azimuth / 360.0)
-            sunPosition = (sunPositionX * self.tileRes, sunPositionY * self.tileRes)
+            sunPositionY = halfTileCount + (self.sunLatitude / 90) * halfTileCount
+            sunPositionX = float(self.tileCount) * (hourAngleCenter / 360.0)
+            sunPosition = (sunPositionX * TILE_GRAPHIC_SIZE, sunPositionY * TILE_GRAPHIC_SIZE)
             sunLayerSurface.blit(sunGraphic, sunPosition)
 
             # Latitude factors calculated based on Mercator Projection (1/cos(lat))
-            latitudeFactorBase = 1.0 / math.cos(math.radians(self.sunAltitude / dieoutFactor))
+            latitudeFactorBase = 1.0 / math.cos(math.radians(self.sunLatitude / dieoutFactor))
 
             # Calculate base dimensions of sunlit area on map
             sunlightWidthBase = float(self.tileCount) / 4.0
             sunlightWidth = sunlightWidthBase * latitudeFactorBase
             sunlightHeight = float(self.tileCount) / 2.0
             
-            # Loop by latitude first (j index or y location) as scale factor is calculated on that basis
-            for j in range(self.tileCount):
-                if j < halfTileCount:
-                    heightIndex = j+1
-                else:
-                    heightIndex = j
-                latitudeFactor = 1.0 / math.cos(math.radians(((abs(halfTileCount - heightIndex) / halfTileCount) * 90.0) / dieoutFactor))
-                latFactorAdjusted = latitudeFactor / latitudeFactorBase
-                latAdjustedWidth = sunlightWidth * latFactorAdjusted
-                sunBounds = (sunPositionX - latAdjustedWidth, sunPositionX + latAdjustedWidth)
-                if sunBounds[0] < 0 and sunBounds[1] > self.tileCount:
-                    sunBoundsAdj = [(0, self.tileCount), (0, self.tileCount)]
-                elif sunBounds[0] < 0:
-                    sunBoundsAdj = [(0, sunBounds[1]), (self.tileCount - abs(sunBounds[0]), self.tileCount)]
-                elif sunBounds[1] > self.tileCount:
-                    sunBoundsAdj = [(0, abs(sunBounds[1]) - self.tileCount), (sunBounds[0], self.tileCount)]     
-                else:
-                    sunBoundsAdj = [sunBounds, sunBounds]
-                for i in range(self.tileCount):
-                    lengthIndex = i
-                    currentPosition = (i*self.tileRes, j*self.tileRes)
-                    if not ((lengthIndex >= sunBoundsAdj[0][0] and lengthIndex <= sunBoundsAdj[0][1]) or \
-                            (lengthIndex >= sunBoundsAdj[1][0] and lengthIndex <= sunBoundsAdj[1][1])):
-                        self.mapData.tiles[i][j].sunlightData.update({azimuth: False})
-                        sunLayerSurface.blit(shadowImage, currentPosition)
-                    else:
-                        self.mapData.tiles[i][j].sunlightData.update({azimuth: True})
+            # Calculate Solar Zenith Angles, effective solar radiation coefficients,
+            # and save sun graphics for each time step/tick
+            for i in range(self.tileCount):
+                for j in range(self.tileCount):
                     
-            self.sunGraphics.update({azimuth: sunLayerSurface})
+                    latitudeAngle = abs(90 - ((180/(self.tileCount-1))*j))
+                    latitudeAngleRadians = math.radians(latitudeAngle)
+                    
+                    solarDeclinationAngle = 0
+                    solarDeclinationAngleRadians = math.radians(solarDeclinationAngle)
+                    
+                    # Calculate correct hour angle of each tile (with respect to current
+                    deltaPositionX = (i - sunPositionX + self.tileCount) % self.tileCount
+                    if deltaPositionX > halfTileCount:
+                        deltaPositionX = deltaPositionX - self.tileCount
+                    
+                    hourAngleEffective = (360 / self.tileCount) * deltaPositionX
+                    hourAngleRadians = math.radians(hourAngleEffective)
+                    
+                    # Solar Zenith Angle -- cos(Z) = sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h)
+                    cosineSolarZenithAngle = math.sin(latitudeAngleRadians) * math.sin(solarDeclinationAngleRadians) + \
+                                             math.cos(latitudeAngleRadians) * math.cos(solarDeclinationAngleRadians) * math.cos(hourAngleRadians)
+
+                    shadowGraphicAlpha = 255*(1-cosineSolarZenithAngle)
+                    if shadowGraphicAlpha > 255:
+                        shadowGraphicAlpha = 255
+                    elif shadowGraphicAlpha < 0:
+                        shadowGraphicAlpha = 0
+                        
+                    shadowImage.set_alpha(shadowGraphicAlpha)
+                    currentPosition = (i * TILE_GRAPHIC_SIZE, j * TILE_GRAPHIC_SIZE)
+                    sunLayerSurface.blit(shadowImage, currentPosition)
+                    self.mapData.tiles[i][j].sunlightData.update({hourAngleCenter: cosineSolarZenithAngle})
+
+            self.sunGraphics.update({hourAngleCenter: sunLayerSurface})
 
 
     # Run whenever tiles are updated
     # Applies graphics to tiles
     def reset_tiles(self):
     
-        #self.valueList.reload()
-        
         # Default tile graphics display
         if self.displayMode == "Surface":
             self.contourEnabled = False
@@ -1124,8 +1332,8 @@ class GameMap:
             for i in range(self.tileCount):
                 for j in range(self.tileCount):
                     tile = self.mapData.tiles[i][j]
-                    tileX = i * self.tileRes
-                    tileY = j * self.tileRes
+                    tileX = i * TILE_GRAPHIC_SIZE
+                    tileY = j * TILE_GRAPHIC_SIZE
                     if tile.windSpeedMagnitude >= windSpeedMax:
                         tile.graphic = "band0"
                     elif tile.windSpeedMagnitude < windSpeedMax - windSpeedIncr*0 and tile.windSpeedMagnitude >= windSpeedMax - windSpeedIncr*1:
