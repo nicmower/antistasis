@@ -32,7 +32,7 @@ MAX_SUN_HOUR_ANGLE = 360       # degrees
 SIM_TICK_DURATION = 1000    # ms
 SIM_SPEED_LEVELS = [0, 1, 2, 5, 10, 25]
 
-WORLD_SIZE = 35
+WORLD_SIZE = 32
 
 # Pygame settings
 EVENTS_USED = [pygame.KEYDOWN,          pygame.QUIT,        pygame.MOUSEBUTTONDOWN, \
@@ -80,7 +80,7 @@ class Game:
         K_8: ('Wind Speed', 'mph'),        
         }
     
-    def toggle_control(control):
+    def toggle_control(self, control):
         """Toggles a boolean control feature.
            E.g. can be used to switch map.displaySun to False."""
         control = not control
@@ -119,7 +119,7 @@ class Game:
             
         # Toggle stats (FPS, coords, etc)
         if event.key == K_q:
-            self.toggle_control(self.readout)
+            self.readout = not self.readout
                 
         # Raise sea level
         if event.key == K_w:
@@ -135,7 +135,7 @@ class Game:
             
         # Toggle sunlight
         if event.key == K_s:
-            self.toggle_control(self.map.displaySun)
+            self.map.displaySun = not self.map.displaySun
             
         # Decrease greenhouse effect
         if event.key == K_LEFTBRACKET:

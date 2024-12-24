@@ -311,8 +311,8 @@ class GameMap:
                 self.origin.y = self.gameWindow.y - self.panLimitPaddingY - self.displaySize.y
 
 
-    # Prototype algorithm for world generation
     def rand_gen(self):
+        """Random generation of world map."""
     
         seedCount = int(self.mapAreaTiles / 2)
         elevationBounds = (-40000, 60000)
@@ -437,6 +437,11 @@ class GameMap:
     # Values should represent air at whatever elevation is just above surface (incl. ocean surface)
     # Should only apply once !!! after initial value generation (rand_gen)
     def elevation_calcs(self):
+        """A function run at startup to calculate impact of current elevation of
+           tile on the effective temperature/pressure at the surface. Based on
+           Lapse Rate.
+           Data is saved as lists to each Tile object for quick lookup."""
+    
     
         # Source: https://www.engineeringtoolbox.com/standard-atmosphere-d_604.html
         # Conversion factors to adjust temp/pressure/density to elevation
