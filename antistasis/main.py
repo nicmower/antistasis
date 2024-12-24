@@ -26,8 +26,8 @@ from __version__ import __version__ as gameVersion
 
 # Simulation
 SEA_LEVEL_INCREMENT = 100   # ft
-SUN_AZIMUTH_INCREMENT = 15  # degrees
-MAX_SUN_AZIMUTH = 360       # degrees
+SUN_HOUR_ANGLE_INCREMENT = 15  # degrees
+MAX_SUN_HOUR_ANGLE = 360       # degrees
 
 SIM_TICK_DURATION = 1000    # ms
 SIM_SPEED_LEVELS = [0, 1, 2, 5, 10, 25]
@@ -243,9 +243,9 @@ class Game:
         """Run a single tick of the simulation.
            Corresponds to one real-world hour."""
         self.hours += 1
-        self.map.sunAzimuth += SUN_AZIMUTH_INCREMENT
-        if self.map.sunAzimuth >= MAX_SUN_AZIMUTH:
-            self.map.sunAzimuth -= MAX_SUN_AZIMUTH
+        self.map.sunHourAngle += SUN_HOUR_ANGLE_INCREMENT
+        if self.map.sunHourAngle >= MAX_SUN_HOUR_ANGLE:
+            self.map.sunHourAngle -= MAX_SUN_HOUR_ANGLE
         self.map.reset_suntiles()
         self.map.heat_calcs()
         self.map.smooth_temps()

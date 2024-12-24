@@ -13,6 +13,8 @@ from ui import *
 # Simulation/controls
 GREENHOUSE_EFFECT_INCREMENT = 0.05
 
+TIME_STEP = 1 # hrs
+
 # maybe set to 1.198E10
 BASE_SUN_HEAT_FLUX = 1.2028 * 10**10    # BTU/hr per square mile from sun before albedo and latitude calcs
 
@@ -26,7 +28,7 @@ REFLECTION_RATIO_SURFACE_TO_AIR = 0.2
 
 STEFAN_BOLTZMANN_CONSTANT = 0.1714      # BTU/(hr*ft^2*°R^4)
 
-RADIATION_CONTROL_FACTOR = (2E-8) # how much radiative heat loss is scaled by... higher = more heat loss per tick
+RADIATION_CONTROL_FACTOR = (1E-9) # how much radiative heat loss is scaled by... higher = more heat loss per tick
 
 NATURAL_CONVECTION_COEFFICIENT = 0.5 # chatgpt says horizontal surfaces should be in 0.5-1 BTU/(ft^2 °F)
 
@@ -55,7 +57,7 @@ ALBEDO = {
 }
 
 CALC_DEPTH = {
-'stone':    0.5,                         # ft 
+'stone':    5,                         # ft 
 'water':    300,                       # ft
 'ice':      5,                         # ft
 'air':      2500                          # ft
@@ -165,8 +167,8 @@ class GameMap:
 
         # Sun settings
         self.sunGraphics = {}
-        self.sunAzimuth = 0 # 0 to 360 degrees (0 is x=0)
-        self.sunAltitude = 0 # 0 to 360 degrees (0 is half of map height)
+        self.sunHourAngle = 0 # 0 to 360 degrees (0 is x=0)
+        self.sunLatitude = 0 # 0 to 360 degrees (0 is half of map height)
         
         self.greenhouse = 0.0
 
@@ -516,10 +518,9 @@ class GameMap:
                 surfaceTemperature = tile.temperature
                 airTemperature = tile.airTemperature
                 airRadiationToSurface = tile.heatFromAir
-
                 surfaceTemperatureRankine = surfaceTemperature + 459.67
                 airTemperatureRankine = airTemperature + 459.67
-                tileLit = tile.sunlightData[self.sunAzimuth]
+                cosineSolarZenithAngle = tile.sunlightData[self.sunHourAngle]
                 
                 airTempElevFactor = self.airTempElevFactor
                 
@@ -533,16 +534,8 @@ class GameMap:
                 
                 # Allow heat input if tile is in sunlight
                 # Scale by latitude (lower at poles)
-                if tileLit:
-                    latitudeAngle = abs(90 - ((180/(self.tileCount-1))*j))
-                    latitudeAngleRadians = math.radians(latitudeAngle)
-                    latitudeFactor = math.cos(latitudeAngleRadians)
-                    sunHeatIn = BASE_SUN_HEAT_FLUX * latitudeFactor
-                    #print("tile: " + str(i) + ", " + str(j))
-                    #print(latitudeAngle)
-                    #print(sunHeatIn)
-                else:
-                    sunHeatIn = 0
+                sunHeatIn = BASE_SUN_HEAT_FLUX * cosineSolarZenithAngle
+
 
                 # Snow/sea ice inherits ice material properties
                 if tileType == 'snow' or tileType == 'sea_ice':
@@ -978,21 +971,25 @@ class GameMap:
     def reset_suntiles(self):
     
         # Generate blank map layer
-        self.sunLayerSurface = self.sunGraphics[self.sunAzimuth]
+        self.sunLayerSurface = self.sunGraphics[self.sunHourAngle]
         self.scale_sun_map()
 
 
-    # Sun position & lighting calculation
-    # Meant to run once prior to gameplay - calculation done ahead of time and saved as lists in tile data
     def calc_sun(self):
+        """A function run at startup to calculate position of sun and whether each
+           tile is sun-lit at each time increment in the simulation (0-24hr).
+           Data is saved as lists to each Tile object for quick lookup."""
 
-        # Reference graphics
+        # Load sun graphics
         sunGraphic = self.graphics.data["sun"]
         shadowImage = self.graphics.data["shadow_50percent"]
 
-        # Loop through degrees of azimuth, 1-360
-        sunDataResolution = 15 # increments for data loop
-        for azimuth in range(0,360,sunDataResolution):
+        # Determine the angular change of the sun for each time step
+        # 1 hr = 15 deg, 0.5 hr = 7.5 deg, etc.
+        sunDataResolution = int(360 / (24 / TIME_STEP))
+        
+        # Loop through degrees of Hour Angle (only the correct Hour Angle at center of sun location)
+        for hourAngleCenter in range(0, 360, sunDataResolution):
 
             # Generate blank map layer
             sunLayerSurface = pygame.Surface((self.mapLengthsPixels.x, self.mapLengthsPixels.y), pygame.SRCALPHA)
@@ -1001,49 +998,56 @@ class GameMap:
             # Calculate center location of sun on map
             dieoutFactor = 1.475
             
+            # Determine position of the sun based on hour angle/latitude
             halfTileCount = float(self.tileCount) / 2.0
-            sunPositionY = halfTileCount + (self.sunAltitude / 90) * halfTileCount
-            sunPositionX = float(self.tileCount) * (azimuth / 360.0)
+            sunPositionY = halfTileCount + (self.sunLatitude / 90) * halfTileCount
+            sunPositionX = float(self.tileCount) * (hourAngleCenter / 360.0)
             sunPosition = (sunPositionX * TILE_GRAPHIC_SIZE, sunPositionY * TILE_GRAPHIC_SIZE)
             sunLayerSurface.blit(sunGraphic, sunPosition)
 
             # Latitude factors calculated based on Mercator Projection (1/cos(lat))
-            latitudeFactorBase = 1.0 / math.cos(math.radians(self.sunAltitude / dieoutFactor))
+            latitudeFactorBase = 1.0 / math.cos(math.radians(self.sunLatitude / dieoutFactor))
 
             # Calculate base dimensions of sunlit area on map
             sunlightWidthBase = float(self.tileCount) / 4.0
             sunlightWidth = sunlightWidthBase * latitudeFactorBase
             sunlightHeight = float(self.tileCount) / 2.0
             
-            # Loop by latitude first (j index or y location) as scale factor is calculated on that basis
-            for j in range(self.tileCount):
-                if j < halfTileCount:
-                    heightIndex = j+1
-                else:
-                    heightIndex = j
-                latitudeFactor = 1.0 / math.cos(math.radians(((abs(halfTileCount - heightIndex) / halfTileCount) * 90.0) / dieoutFactor))
-                latFactorAdjusted = latitudeFactor / latitudeFactorBase
-                latAdjustedWidth = sunlightWidth * latFactorAdjusted
-                sunBounds = (sunPositionX - latAdjustedWidth, sunPositionX + latAdjustedWidth)
-                if sunBounds[0] < 0 and sunBounds[1] > self.tileCount:
-                    sunBoundsAdj = [(0, self.tileCount), (0, self.tileCount)]
-                elif sunBounds[0] < 0:
-                    sunBoundsAdj = [(0, sunBounds[1]), (self.tileCount - abs(sunBounds[0]), self.tileCount)]
-                elif sunBounds[1] > self.tileCount:
-                    sunBoundsAdj = [(0, abs(sunBounds[1]) - self.tileCount), (sunBounds[0], self.tileCount)]     
-                else:
-                    sunBoundsAdj = [sunBounds, sunBounds]
-                for i in range(self.tileCount):
-                    lengthIndex = i
-                    currentPosition = (i*TILE_GRAPHIC_SIZE, j*TILE_GRAPHIC_SIZE)
-                    if not ((lengthIndex >= sunBoundsAdj[0][0] and lengthIndex <= sunBoundsAdj[0][1]) or \
-                            (lengthIndex >= sunBoundsAdj[1][0] and lengthIndex <= sunBoundsAdj[1][1])):
-                        self.mapData.tiles[i][j].sunlightData.update({azimuth: False})
-                        sunLayerSurface.blit(shadowImage, currentPosition)
-                    else:
-                        self.mapData.tiles[i][j].sunlightData.update({azimuth: True})
+            # Calculate Solar Zenith Angles, effective solar radiation coefficients,
+            # and save sun graphics for each time step/tick
+            for i in range(self.tileCount):
+                for j in range(self.tileCount):
                     
-            self.sunGraphics.update({azimuth: sunLayerSurface})
+                    latitudeAngle = abs(90 - ((180/(self.tileCount-1))*j))
+                    latitudeAngleRadians = math.radians(latitudeAngle)
+                    
+                    solarDeclinationAngle = 0
+                    solarDeclinationAngleRadians = math.radians(solarDeclinationAngle)
+                    
+                    # Calculate correct hour angle of each tile (with respect to current
+                    deltaPositionX = (i - sunPositionX + self.tileCount) % self.tileCount
+                    if deltaPositionX > halfTileCount:
+                        deltaPositionX = deltaPositionX - self.tileCount
+                    
+                    hourAngleEffective = (360 / self.tileCount) * deltaPositionX
+                    hourAngleRadians = math.radians(hourAngleEffective)
+                    
+                    # Solar Zenith Angle -- cos(Z) = sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h)
+                    cosineSolarZenithAngle = math.sin(latitudeAngleRadians) * math.sin(solarDeclinationAngleRadians) + \
+                                             math.cos(latitudeAngleRadians) * math.cos(solarDeclinationAngleRadians) * math.cos(hourAngleRadians)
+
+                    shadowGraphicAlpha = 255*(1-cosineSolarZenithAngle)
+                    if shadowGraphicAlpha > 255:
+                        shadowGraphicAlpha = 255
+                    elif shadowGraphicAlpha < 0:
+                        shadowGraphicAlpha = 0
+                        
+                    shadowImage.set_alpha(shadowGraphicAlpha)
+                    currentPosition = (i * TILE_GRAPHIC_SIZE, j * TILE_GRAPHIC_SIZE)
+                    sunLayerSurface.blit(shadowImage, currentPosition)
+                    self.mapData.tiles[i][j].sunlightData.update({hourAngleCenter: cosineSolarZenithAngle})
+
+            self.sunGraphics.update({hourAngleCenter: sunLayerSurface})
 
 
     # Run whenever tiles are updated
