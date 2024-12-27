@@ -14,9 +14,9 @@ textBackdropColor = None
 # FUNCTIONS #
 #############
 
-# Rotate pygame image about center
-# https://stackoverflow.com/questions/4183208/how-do-i-rotate-an-image-around-its-center-using-pygame
 def rotate_center(surf, image, pos, angle):
+    """Rotate a pygame image about its center."""
+    # https://stackoverflow.com/questions/4183208/how-do-i-rotate-an-image-around-its-center-using-pygame
 
     # offset from pivot to center
     w, h = image.get_size()
@@ -24,10 +24,10 @@ def rotate_center(surf, image, pos, angle):
     image_rect = image.get_rect(topleft = (pos[0] - originPos[0], pos[1]-originPos[1]))
     offset_center_to_pivot = pygame.math.Vector2(pos) - image_rect.center
     
-    # roatated offset from pivot to center
+    # rotated offset from pivot to center
     rotated_offset = offset_center_to_pivot.rotate(-angle)
 
-    # roatetd image center
+    # rotated image center
     rotated_image_center = (pos[0] - rotated_offset.x + w/2, pos[1] - rotated_offset.y + h/2)
 
     # get a rotated image
@@ -38,8 +38,8 @@ def rotate_center(surf, image, pos, angle):
     surf.blit(rotated_image, rotated_image_rect)
 
 
-# Class representing main game window
 class GameWindow:
+    """Holds instance of and controls for main game window."""
 
     # Initialize window
     def __init__(self, defaultRes, graphics, resX=1920, resY=1080):
@@ -72,11 +72,12 @@ class GameWindow:
     def set_icon(self, icon):
         pygame.display.set_icon(icon)
 
+
 # Loads all graphics
 class Graphics:
-    
-    # Pulls all image (.png) files from resources folder and loads as pygame image
-    # Stores each in dictionary under filename (no extension) indices
+    """Pulls all image (.png) files from resources folder and loads as pygame image
+       Stores each in dictionary under filename (no extension) indices."""
+        
     def __init__(self):
         self.directory = "resources/graphics"
         self.data = {}
@@ -90,8 +91,8 @@ class Graphics:
                 self.data.update({name: img})
 
 
-# Plots contour bars for specific views
 class ContourBars:
+    """Generates and plots contour bar legend."""
 
     # Initialize
     def __init__(self, gameWindow, padding=10, spacing=21, valuesMax=6, decMax=3):
@@ -166,3 +167,14 @@ class ContourBars:
         contourString = "<=" + contourValueLower
         contourText = font.render(contourString, True, self.barColors[10], self.backgroundColor)
         self.gameWindow.screen.blit(contourText, currentPos)
+        
+
+class Renderer:
+    """Handles all game display functions."""
+    
+    # Initialize
+    def __init__(self, gameWindow, graphics):
+        self.gameWindow = gameWindow
+        self.graphics = graphics
+        
+    
