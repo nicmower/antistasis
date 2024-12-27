@@ -311,7 +311,7 @@ class Game:
 
                 # Calculate and display FPS
                 fps = self.clock.get_fps()
-                fpsText = self.fonts['pokemon'].render(f"{fps:.1f}", True, textColor, textBackdropColor)
+                fpsText = self.fonts['pokemon'].render(f"FPS: {fps:.1f}", True, textColor, textBackdropColor)
                 self.screen.blit(fpsText, (10, 10))
 
                 # Display mouse coordinates
