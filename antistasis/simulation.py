@@ -27,7 +27,7 @@ REFLECTION_RATIO_SURFACE_TO_AIR = 0.2
 
 STEFAN_BOLTZMANN_CONSTANT = 0.1714      # BTU/(hr*ft^2*°R^4)
 
-RADIATION_CONTROL_FACTOR = (1E-9) # how much radiative heat loss is scaled by... higher = more heat loss per tick
+RADIATION_CONTROL_FACTOR = (0.9E-9) # how much radiative heat loss is scaled by... higher = more heat loss per tick
 
 NATURAL_CONVECTION_COEFFICIENT = 0.5 # chatgpt says horizontal surfaces should be in 0.5-1 BTU/(ft^2 °F)
 
@@ -56,7 +56,7 @@ ALBEDO = {
 }
 
 CALC_DEPTH = {
-'stone':    5,                         # ft 
+'stone':    1,                         # ft 
 'water':    300,                       # ft
 'ice':      5,                         # ft
 'air':      2500                          # ft
@@ -133,6 +133,7 @@ class GameMap:
             self.x = x
             self.y = y  
 
+
     class Map_Data:
         """Class used to store data for each tile,
            as a list of Tile objects."""
@@ -145,6 +146,7 @@ class GameMap:
                     tile = Tile(i, j)
                     row.append(tile)
                 self.tiles.append(row)
+    
     
     ########################################
     # MAIN MAP CLASS FUNCTIONS AND CLASSES #
@@ -261,7 +263,7 @@ class GameMap:
         self.origin.x += relativePosition[0]
         self.origin.y += relativePosition[1]
         self.check_bounds()
-        
+
 
     def reset_view(self):
         """Reset display origin and size to recenter view."""
@@ -272,7 +274,6 @@ class GameMap:
         self.check_bounds()
 
 
-    
     def check_bounds(self):
         """A function that checks if map is not out of the bounds of the screen.
            Edges of displayed map are locked inside the edges of the screen.
@@ -433,15 +434,16 @@ class GameMap:
             #self.calc_velocity()
               
               
-    # Apply effect to temp, pressure, and density according to tile elevation
-    # Values should represent air at whatever elevation is just above surface (incl. ocean surface)
-    # Should only apply once !!! after initial value generation (rand_gen)
+
     def elevation_calcs(self):
         """A function run at startup to calculate impact of current elevation of
-           tile on the effective temperature/pressure at the surface. Based on
-           Lapse Rate.
+           tile on the effective temperature/pressure at the surface. 
+           The physical effect is known as Lapse Rate.
            Data is saved as lists to each Tile object for quick lookup."""
     
+        # Apply effect to temp, pressure, and density according to tile elevation
+        # Values should represent air at whatever elevation is just above surface (incl. ocean surface)
+        # Should only apply once !!! after initial value generation (rand_gen)
     
         # Source: https://www.engineeringtoolbox.com/standard-atmosphere-d_604.html
         # Conversion factors to adjust temp/pressure/density to elevation
@@ -495,8 +497,8 @@ class GameMap:
             tile.airTemperature += (averageTemperature - tile.airTemperature) * TEMPERATURE_SMOOTH_FACTOR
             for neighborTile in tile.neighbors:
                 neighborTile.airTemperature += (averageTemperature - neighborTile.airTemperature) * TEMPERATURE_SMOOTH_FACTOR
-                
-                    
+
+
     def heat_calcs(self):
         """Calculate input and output heats to each tile (both surface and air) and
            calculate the resulting temperature change. Includes transfer of heat
@@ -720,9 +722,10 @@ class GameMap:
             print("Total world air heat gain = " + str(worldAirHeatGainSum) + " E20 BTU")
             print("Total world air heat loss = " + str(worldAirHeatLossSum) + " E20 BTU")
 
-        
-    # Solve stuff based on tile values
+
     def calc_velocity(self):
+        """Use Bernoulli's equation and air pressures to modify wind vectors."""
+        
         # Shuffle tiles as to avoid order of operations influencing result
         tileListX = list(range(self.tileCount))
         tileListY = list(range(self.tileCount))
@@ -811,8 +814,9 @@ class GameMap:
                 tile.windSpeedMagnitude = math.sqrt(velocityComponentSumX**2 + velocityComponentSumY**2)
 
 
-    # Change pressure from temperature change
     def gas_calcs(self):
+        """Use Ideal Gas Law and air temperature/density
+           to solve for new air pressure."""
     
         # Loop through tiles
         for i in range(self.tileCount):
@@ -861,11 +865,10 @@ class GameMap:
                 # Ideal gas law 
                 # P = density * gas const * T
                 tile.airPressure = tileAirDensity * gasConstant * tileAirTemperatureRankine * psfToPsi
-                
 
-    # Solve stuff based on tile values
-    # NOTE: NOT changing temp and pressure, only calculates wind speed/velocity
+
     def calc_temp_and_pressure(self):
+        """Calculates wind speed and velocity from temp/pressure."""
     
         # Shuffle tiles as to avoid order of operations influencing result
         tileListX = list(range(self.tileCount))
@@ -950,8 +953,13 @@ class GameMap:
                 tile.windSpeedMagnitude = math.sqrt(velocityComponentSumX**2 + velocityComponentSumY**2)
 
 
-    # Update map surface with new data
     def update_map(self):
+        """Update map surface with any new changes.
+           Currently, this function just refreshes
+           all tiles every call.
+           TODO: set an ".updated" variable switch
+           that can be caught by this function so
+           only those tiles need to be changed."""
     
         # Create a surface and pass in a tuple containing its length and width
         self.mapSurface = pygame.Surface((self.mapLengthsPixels.x, self.mapLengthsPixels.y))
@@ -974,8 +982,10 @@ class GameMap:
                         rotate_center(self.mapSurface, graphicOverlay, currentPosition, tileOverlayAngle)
 
 
-    # Generate sun map
     def reset_suntiles(self):
+        """Pulls pre-loaded sun surface (includes "darkness"
+           and sun icon for a specific time of day) and scale
+           to current display settings."""
     
         # Generate blank map layer
         self.sunLayerSurface = self.sunGraphics[self.sunHourAngle]
@@ -1057,9 +1067,11 @@ class GameMap:
             self.sunGraphics.update({hourAngleCenter: sunLayerSurface})
 
 
-    # Run whenever tiles are updated
-    # Applies graphics to tiles
     def reset_tiles(self):
+        """Takes current tile settings (dependent on
+           tile properties, e.g. ice on tiles below
+           freezing), fetches pre-loaded graphic and 
+           adds to correct location on map surface."""
     
         # Default tile graphics display
         if self.displayMode == "Surface":
@@ -1362,29 +1374,29 @@ class GameMap:
     
         self.update_map()
         self.scale_map()
-        
 
-    # Scale function
+
     def scale_map(self):
+        """Scale map surface to current display settings."""
         if self.antialiasing is True:
             self.mapSurfaceScaled = pygame.transform.smoothscale(self.mapSurface, (self.displaySize.x, self.displaySize.y))
         else:
             self.mapSurfaceScaled = pygame.transform.scale(self.mapSurface, (self.displaySize.x, self.displaySize.y))
 
 
-    # Scale function
     def scale_sun_map(self):
+        """Scale sun overlay surface to current display settings."""
         if self.antialiasing is True:
             self.sunLayerSurfaceScaled = pygame.transform.smoothscale(self.sunLayerSurface, (self.displaySize.x, self.displaySize.y))
         else:
             self.sunLayerSurfaceScaled = pygame.transform.scale(self.sunLayerSurface, (self.displaySize.x, self.displaySize.y))
 
 
-    # Return map surface for blit
     def get_map(self):
+        """Quick function to return map surface."""
         return self.mapSurfaceScaled, (self.origin.x, self.origin.y)
 
 
-    # Return sun map layer/surface for blit
     def get_sun_map(self):
+        """Quick function to return sun overlay surface."""
         return self.sunLayerSurfaceScaled, (self.origin.x, self.origin.y)
